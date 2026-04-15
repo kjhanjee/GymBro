@@ -44,15 +44,28 @@ GymBro is a modern, personal fitness tracking application built with Jetpack Com
 
 ## Setup Instructions
 
+### AI Model Setup
+The "Workout Optimizer" and "Macro Calculator" features require a LiteRT (TensorFlow Lite) model.
+1. **Download the model**: [gemma-4-E2B-it.litertlm](https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/blob/main/gemma-4-E2B-it.litertlm)
+2. **Place the file**: Move the downloaded `.litertlm` file into the following directory:
+   `app/src/main/assets/gemma-4-E2B-it.litertlm`
+   *(If the `assets` folder doesn't exist, create it under `app/src/main/`)*
+
+### Build Instructions
+1. **Clone the repository** or download the source.
+2. **Open the project** in Android Studio (Ladybug or newer).
+3. **Gradle Sync**: Wait for Android Studio to finish syncing the project.
+4. **Build & Run**:
+   - Connect an Android device (API 26+) or start an emulator.
+   - Use the "Run" button in Android Studio or execute the following command in the terminal:
+     ```bash
+     ./gradlew installDebug
+     ```
+
 ### Prerequisites
 1. **Android Studio** (Ladybug or newer)
 2. **JDK 17** or higher
-
-### Installation
-1. Clone the repository or download the source.
-2. Open the project in Android Studio.
-3. Wait for Gradle sync to finish.
-4. Run the `:app` module on an Android device or emulator (API 26+).
+3. **Physical Device Recommended**: AI inference (LiteRT) performs significantly better on physical hardware with GPU support.
 
 ## Project Structure
 ```
