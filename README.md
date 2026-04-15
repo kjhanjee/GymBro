@@ -1,137 +1,72 @@
-# GymBro - Fitness Tracking App
+# GymBro (GymLogger) - Fitness Tracking App
 
-A personal fitness tracking app to help you create workout routines, track workouts, and monitor your progress.
+GymBro is a modern, personal fitness tracking application built with Jetpack Compose and Android Room. It allows users to create custom workout routines, track their performance with high precision, and visualize their progress over time.
+
+## Latest Developments & Improvements
+
+### UI/UX & Input Stability
+- **Refined Numeric Inputs**: Implemented local `String` state management for Weight, Reps, and RIR fields. This eliminates "0.0" ghosting and flickering during active editing, providing a smooth input experience.
+- **Global Focus Management**: Integrated a global focus removal system in `MainActivity`. Tapping outside any input field or closing the keyboard automatically clears focus, preventing accidental edits.
+- **Professional Instruction Formatting**: Added an intelligent parsing engine for exercise "How-to" instructions. It automatically converts raw blocks of text or inconsistently numbered lists into clean, professional, and properly enumerated step-by-step guides.
+
+### Data & Performance
+- **Room Migration (In Progress)**: Moving from DataStore-based JSON persistence to a robust Room database for improved data integrity, complex querying, and faster performance.
+- **Real-time Analytics**: Replaced mock data in the `ExerciseDetailScreen` with live workout history. Users can now see their actual **Weight Trends** and **Training Frequency** charts based on logged sessions.
+- **Dynamic Logic**: Implemented conditional rendering for exercise charts—if no workouts are logged for a specific exercise, the trends section is hidden to maintain a clean UI.
 
 ## Features
 
 ### Core Functionality
-- **Exercise Database**: Extensive library of exercises organized by muscle group
-  - Chest exercises (Bench Press, Incline Press, Flyes, etc.)
-  - Back exercises (Bent Over Row, Pull-ups, Lat Pulldown, etc.)
-  - Shoulder exercises (Overhead Press, Lateral Raises, etc.)
-  - Leg exercises (Squat, Romanian Deadlift, Leg Press, etc.)
-  - Arm exercises (Curls, Tricep Pushdowns, etc.)
-  - Core exercises (Plank, Dead Bug, Russian Twists, etc.)
-  - Cardio exercises
-
-- **Workout Routines**: Create custom workout routines
-  - Add exercises to your routines
-  - Name and describe your routines
-  - Save for later use
-
-- **Workout Tracking**: Log your workouts with full details
-  - Track sets, reps, and weight
-  - **RIR (Reps In Reserve)** tracking
-  - **4 Set Types**:
-    - Normal Set
-    - Warmup Set
-    - Failure Set
-    - Drop Set
-  - Notes for each set
-
-### UI/UX
-- **Card-based design** for modern, clean interface
-- **Dark mode** support (default)
-- **Material 3** design system
-- **Dynamic Theming**: Custom primary color based on user preference
+- **Massive Exercise Database**: Over **1,000 exercises** categorized by muscle groups (Chest, Back, Shoulders, Legs, Arms, Core, etc.).
+- **Custom Routine Creator**: Build and save personalized workout plans with ease.
+- **Precision Workout Tracking**:
+  - Log Sets, Reps, and Weight.
+  - **Reps In Reserve (RIR)** tracking for intensity management.
+  - **4 Set Types**: Normal, Warmup, Failure, and Drop Sets.
+  - Per-set notes for detailed tracking.
 
 ### Home Screen
-- Quick action buttons for main features
-- Your saved routines overview
-- Easy navigation
+- Quick actions for core features.
+- Overview of saved routines.
+- Seamless navigation between Library, Routines, and Statistics.
 
-### Statistics
-- View completed workouts history
-- Track progress over time
-- Share workout summaries as images
+### Statistics & Progress
+- Comprehensive workout history.
+- Dynamic charts for individual exercise progress.
+- Shareable workout summaries.
+
+## Tech Stack
+- **Language**: Kotlin
+- **UI Framework**: Jetpack Compose
+- **Database**: Room (Migrating from DataStore)
+- **Architecture**: MVVM with Repository Pattern
+- **Design System**: Material 3 with Dynamic Theming support
 
 ## Setup Instructions
 
 ### Prerequisites
-1. **Android Studio** (latest version)
+1. **Android Studio** (Ladybug or newer)
 2. **JDK 17** or higher
 
-### Step 1: Import the Project
-1. Open Android Studio
-2. Select "Open an existing project"
-3. Navigate to `F:/Projects/GymBro`
-
-### Step 2: Sync Gradle
-Android Studio will automatically sync the Gradle files. Wait for the sync to complete.
-
-### Step 3: Build and Run
-1. Connect an Android device or start an emulator
-2. Click the Run button (green play icon)
-3. Select your device/emulator
-
-### Alternative: Command Line
-
-If you have Java installed and JAVA_HOME configured:
-
-```bash
-cd "F:/Projects/GymBro"
-./gradlew assembleDebug
-```
-
-Then install on your device:
-```bash
-adb install app/build/outputs/apk/debug/app-debug.apk
-```
+### Installation
+1. Clone the repository or download the source.
+2. Open the project in Android Studio.
+3. Wait for Gradle sync to finish.
+4. Run the `:app` module on an Android device or emulator (API 26+).
 
 ## Project Structure
-
 ```
 app/
 ├── src/main/
 │   ├── java/com/gymlogger/
-│   │   ├── data/
-│   │   │   ├── ExerciseRepository.kt
-│   │   │   └── RoutineRepository.kt
-│   │   ├── model/
-│   │   │   ├── Exercise.kt
-│   │   │   ├── WorkoutSet.kt
-│   │   │   ├── Routine.kt
-│   │   │   └── MuscleGroup.kt
+│   │   ├── data/          # Room DB, DAOs, and Repositories
+│   │   ├── model/         # Data entities (Exercise, Routine, Workout)
 │   │   ├── ui/
-│   │   │   ├── navigation/
-│   │   │   ├── screens/
-│   │   │   │   ├── HomeScreen.kt
-│   │   │   │   ├── WorkoutTrackerScreen.kt
-│   │   │   │   ├── ExerciseDatabaseScreen.kt
-│   │   │   │   ├── RoutineCreatorScreen.kt
-│   │   │   │   └── StatisticsScreen.kt
-│   │   │   └── theme/
+│   │   │   ├── navigation/ # Compose Navigation routes
+│   │   │   ├── screens/    # Screen-level Composables
+│   │   │   └── theme/      # Material 3 Theme definitions
 │   │   └── MainActivity.kt
-│   └── res/
-│       ├── values/
-│       └── values-night/
 ```
 
-## Exercise Library
-
-The app includes a comprehensive exercise database covering:
-- **Chest**: 7 exercises
-- **Back**: 7 exercises
-- **Shoulders**: 5 exercises
-- **Legs**: 8 exercises
-- **Arms**: 8 exercises
-- **Core**: 5 exercises
-- **Cardio**: 4 exercises
-
-## Set Types Explained
-
-### Normal Set
-Regular working set towards your training goal.
-
-### Warmup Set
-Lighter weight to prepare muscles before main work.
-
-### Failure Set
-Go to muscular failure (0 RIR) to maximize stimulus.
-
-### Drop Set
-After reaching failure, immediately reduce weight and continue.
-
 ## License
-
 Personal use only. Not for distribution or sale.
