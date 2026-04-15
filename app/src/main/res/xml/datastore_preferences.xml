@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<datastore>
+    <string name="app_version">1.0</string>
+    <boolean name="user_prefers_dark_mode" defaultValue="true"/>
+    <string name="user_recent_routine">Chest &amp; Triceps</string>
+    <boolean name="user_show_set_notes" defaultValue="true"/>
+    <boolean name="user_hide_completed_sets" defaultValue="false"/>
+</datastore>

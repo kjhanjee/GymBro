@@ -1,0 +1,7 @@
+# Project exclude paths
+/.gradle/
+/app/build/
+/build/
+/.idea/
+/.kotlin/
+/exercises/

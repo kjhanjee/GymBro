@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">GymBro</string>
+    <string name="home">Home</string>
+    <string name="workouts">Workouts</string>
+    <string name="create_routine">Create Routine</string>
+    <string name="track_workout">Track Workout</string>
+    <string name="statistics">Statistics</string>
+    <string name="exercises">Exercises</string>
+    <string name="share">Share</string>
+    <string name="start_workout">Start Workout</string>
+    <string name="log_workout">Log Workout</string>
+    <string name="create_new">Create New</string>
+    <string name="my_routines">My Routines</string>
+    <string name="workout_logs">Workout Logs</string>
+    <string name="search_exercises">Search Exercises...</string>
+    <string name="exercise_name">Exercise Name</string>
+    <string name="muscle_group">Muscle Group</string>
+    <string name="equipment">Equipment</string>
+    <string name="reps">Reps</string>
+    <string name="weight">Weight</string>
+    <string name="sets">Sets</string>
+    <string name="notes">Notes</string>
+    <string name="save">Save</string>
+    <string name="cancel">Cancel</string>
+    <string name="delete">Delete</string>
+    <string name="share_workout">Share Workout</string>
+</resources>
