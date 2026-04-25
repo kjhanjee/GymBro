@@ -23,6 +23,18 @@ class WorkoutService : Service() {
     private val _secondsElapsed = MutableStateFlow(0L)
     val secondsElapsed = _secondsElapsed.asStateFlow()
 
+    private val _workoutTitle = MutableStateFlow("Tracked Workout")
+    val workoutTitle = _workoutTitle.asStateFlow()
+
+    private val _totalSets = MutableStateFlow(0)
+    val totalSets = _totalSets.asStateFlow()
+
+    private val _completedSets = MutableStateFlow(0)
+    val completedSets = _completedSets.asStateFlow()
+
+    private val _isActive = MutableStateFlow(false)
+    val isActive = _isActive.asStateFlow()
+
     private val _restSecondsRemaining = MutableStateFlow(0)
     val restSecondsRemaining = _restSecondsRemaining.asStateFlow()
 
@@ -57,6 +69,7 @@ class WorkoutService : Service() {
     private fun startWorkout() {
         if (timerJob != null) return
         
+        _isActive.value = true
         startForeground(NOTIFICATION_ID, createNotification("Workout in progress..."))
         
         timerJob = serviceScope.launch {
@@ -68,13 +81,26 @@ class WorkoutService : Service() {
         }
     }
 
-    private fun stopWorkout() {
+    fun stopWorkout() {
         timerJob?.cancel()
         timerJob = null
         restTimerJob?.cancel()
         restTimerJob = null
+        _isActive.value = false
+        _secondsElapsed.value = 0
+        _totalSets.value = 0
+        _completedSets.value = 0
+        _isRestTimerActive.value = false
+        _restSecondsRemaining.value = 0
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
+    }
+
+    fun updateWorkoutStats(title: String, total: Int, completed: Int) {
+        _workoutTitle.value = title
+        _totalSets.value = total
+        _completedSets.value = completed
+        updateNotification()
     }
 
     fun startRestTimer(seconds: Int) {
@@ -124,6 +150,11 @@ class WorkoutService : Service() {
     }
 
     private fun updateNotification() {
+        if (!_isActive.value) {
+            val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            manager.cancel(NOTIFICATION_ID)
+            return
+        }
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || 
             checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
@@ -169,6 +200,9 @@ class WorkoutService : Service() {
     }
 
     override fun onDestroy() {
+        _isActive.value = false
+        _isRestTimerActive.value = false
+        _secondsElapsed.value = 0
         super.onDestroy()
         serviceScope.cancel()
     }

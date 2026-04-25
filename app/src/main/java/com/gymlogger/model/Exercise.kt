@@ -1,7 +1,13 @@
 package com.gymlogger.model
 
+import androidx.room.Entity
+import androidx.room.PrimaryKey
+import kotlinx.serialization.Serializable
+
+@Serializable
+@Entity(tableName = "exercises")
 data class Exercise(
-    val id: Long,
+    @PrimaryKey val id: Long,
     val name: String,
     val muscleGroups: List<MuscleGroup>,
     val equipment: Equipment,

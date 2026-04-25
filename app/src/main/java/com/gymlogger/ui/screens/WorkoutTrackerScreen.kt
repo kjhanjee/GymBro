@@ -201,6 +201,13 @@ fun WorkoutTrackerScreen(
         }
     }
 
+    // Update service stats
+    LaunchedEffect(workoutTitle, exercises.size, exercises.sumOf { it.sets.size }, exercises.sumOf { it.sets.count { s -> s.isCompleted } }) {
+        val total = exercises.sumOf { it.sets.size }
+        val completed = exercises.sumOf { it.sets.count { s -> s.isCompleted } }
+        workoutService?.updateWorkoutStats(workoutTitle, total, completed)
+    }
+
     val scope = rememberCoroutineScope()
 
     // Handle unit changes for existing data
@@ -281,7 +288,7 @@ fun WorkoutTrackerScreen(
             val stopIntent = Intent(context, WorkoutService::class.java).apply {
                 action = WorkoutService.ACTION_STOP_WORKOUT
             }
-            context.stopService(stopIntent)
+            context.startService(stopIntent)
 
             val workoutSets = exercises.flatMap { exerciseState ->
                 exerciseState.sets
@@ -614,7 +621,7 @@ fun WorkoutTrackerScreen(
                                 val stopIntent = Intent(context, WorkoutService::class.java).apply {
                                     action = WorkoutService.ACTION_STOP_WORKOUT
                                 }
-                                context.stopService(stopIntent)
+                                context.startService(stopIntent)
                                 onNavigateBack() 
                             },
                             modifier = Modifier.fillMaxWidth(),

@@ -92,10 +92,16 @@ fun RoutineCreatorScreen(
                     routineName = importedRoutine.name
                     routineDescription = importedRoutine.description ?: ""
                     selectedExercises = importedRoutine.exercises.mapIndexed { index, ex ->
+                        // Match exercise by name to find local ID
+                        val localExercise = ExerciseRepository.exerciseDatabase.find { 
+                            it.name.equals(ex.exerciseName, ignoreCase = true) 
+                        }
+                        
                         ex.copy(
                             id = System.currentTimeMillis() + index,
-                            sets = ex.sets.map { set ->
-                                set.copy()
+                            exerciseId = localExercise?.id ?: ex.exerciseId, // Fallback to source ID if not found, but ideally we'd handle "not found"
+                            sets = ex.sets.mapIndexed { setIndex, set ->
+                                set.copy(id = (setIndex + 1).toLong())
                             }
                         )
                     }
@@ -566,7 +572,12 @@ fun ExerciseCardItem(
     onChangeExercise: () -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
-    val exercise = remember(routineExercise.exerciseId) { ExerciseRepository.getExerciseById(routineExercise.exerciseId) }
+    var exercise by remember { mutableStateOf<Exercise?>(null) }
+
+    LaunchedEffect(routineExercise.exerciseId) {
+        exercise = ExerciseRepository.getExerciseById(routineExercise.exerciseId)
+    }
+
     val isBodyweight = exercise?.equipment == Exercise.Equipment.BODYWEIGHT
 
     Surface(

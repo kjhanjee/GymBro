@@ -4,8 +4,18 @@ import com.gymlogger.model.Exercise
 import com.gymlogger.model.MuscleGroup
 import com.gymlogger.model.Exercise.Equipment
 import com.gymlogger.model.Exercise.ExerciseCategory
+import android.content.Context
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 
 object ExerciseRepository {
+    private var exerciseDao: ExerciseDao? = null
+
+    fun init(context: Context) {
+        exerciseDao = AppDatabase.getDatabase(context).exerciseDao()
+    }
 
     val exerciseDatabase: List<Exercise> = listOf(
         // ABS
@@ -1017,17 +1027,30 @@ object ExerciseRepository {
     suspend fun searchExercises(query: String): List<Exercise> {
         if (query.isBlank()) return emptyList()
         val lowerQuery = query.lowercase()
-        return exerciseDatabase.filter {
+        val localExercises = exerciseDao?.getAllExercises()?.first() ?: emptyList()
+        return (exerciseDatabase + localExercises).filter {
             it.name.lowercase().contains(lowerQuery) ||
                     it.instructions?.lowercase()?.contains(lowerQuery) ?: false
-        }
+        }.distinctBy { it.id }
     }
 
     fun filterByMuscleGroup(muscleGroup: MuscleGroup): List<Exercise> {
         return exerciseDatabase.filter { it.muscleGroups.contains(muscleGroup) }
     }
 
-    fun getExerciseById(id: Long): Exercise? {
-        return exerciseDatabase.find { it.id == id }
+    suspend fun getExerciseById(id: Long): Exercise? {
+        return exerciseDatabase.find { it.id == id } ?: exerciseDao?.getExerciseById(id)
+    }
+
+    fun getExerciseNamesByIds(ids: List<Long>): Flow<List<String>> {
+        val staticMatches = exerciseDatabase.filter { it.id in ids }
+        return (exerciseDao?.getExercisesByIds(ids) ?: flowOf(emptyList())).map { localMatches ->
+            val allMatchesMap = (staticMatches + localMatches).associateBy { it.id }
+            ids.mapNotNull { id -> allMatchesMap[id]?.name }
+        }
+    }
+
+    suspend fun updateExercise(exercise: Exercise) {
+        exerciseDao?.insertExercise(exercise)
     }
 }

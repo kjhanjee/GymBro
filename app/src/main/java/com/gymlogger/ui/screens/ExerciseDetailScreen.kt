@@ -38,8 +38,17 @@ fun ExerciseDetailScreen(
     exerciseId: Long,
     onNavigateBack: () -> Unit
 ) {
-    val exercise = remember(exerciseId) { ExerciseRepository.getExerciseById(exerciseId) } ?: return
+    var exercise by remember { mutableStateOf<Exercise?>(null) }
     var showRoutineDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(exerciseId) {
+        exercise = ExerciseRepository.getExerciseById(exerciseId)
+    }
+
+    if (exercise == null) return
+
+    val exerciseData = exercise!!
+
     val context = androidx.compose.ui.platform.LocalContext.current
     val weightUnit by SettingsRepository.getWeightUnit(context).collectAsState(initial = SettingsRepository.WeightUnit.LBS)
     
@@ -71,7 +80,7 @@ fun ExerciseDetailScreen(
     Scaffold(
         topBar = {
             GymBroTopAppBar(
-                title = exercise.name,
+                title = exerciseData.name,
                 onNavigateBack = onNavigateBack
             )
         },
@@ -140,7 +149,7 @@ fun ExerciseDetailScreen(
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(bottom = 12.dp)
             )
-            InstructionSection(exercise.formattedInstructions)
+            InstructionSection(exerciseData.formattedInstructions)
 
             Spacer(modifier = Modifier.height(32.dp))
         }
@@ -150,7 +159,7 @@ fun ExerciseDetailScreen(
     if (showRoutineDialog) {
         com.gymlogger.ui.theme.GymBroTheme(hue = hue) {
             AddToRoutineDialog(
-                exercise = exercise,
+                exercise = exerciseData,
                 onDismiss = { showRoutineDialog = false }
             )
         }

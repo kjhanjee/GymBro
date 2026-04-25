@@ -21,6 +21,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalWindowInfo
 import com.gymlogger.ai.MacroCalculator
+import com.gymlogger.data.ExerciseRepository
 import com.gymlogger.data.MealRepository
 import com.gymlogger.data.RoutineRepository
 import com.gymlogger.data.SettingsRepository
@@ -41,6 +42,7 @@ class MainActivity : ComponentActivity() {
 
             LaunchedEffect(Unit) {
                 SettingsRepository.init(context)
+                ExerciseRepository.init(context)
                 RoutineRepository.init(context)
                 MealRepository.init(context)
                 
