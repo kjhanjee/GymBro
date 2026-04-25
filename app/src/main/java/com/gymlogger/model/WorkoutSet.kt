@@ -11,14 +11,21 @@ data class WorkoutSet(
     val reps: Int?,
     val weight: Float?,
     val rir: Int? = null, // Reps In Reserve
+    val inputType: InputType = InputType.REPS,
     val notes: String? = null,
     val isCompleted: Boolean = false
 ) {
     @Serializable
-    enum class SetType {
-        NORMAL,
-        WARMUP,
-        FAILURE,
-        DROP_SET
+    enum class SetType(val label: String, val shortLabel: String) {
+        NORMAL("Normal Set", "N"),
+        WARMUP("Warmup Set", "W"),
+        FAILURE("Failure Set", "F"),
+        DROP_SET("Drop Set", "D")
+    }
+
+    @Serializable
+    enum class InputType {
+        REPS,
+        TIME
     }
 }

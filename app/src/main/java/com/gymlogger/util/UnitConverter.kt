@@ -18,11 +18,11 @@ object UnitConverter {
         }
     }
 
-    fun formatTimer(minutes: Int, unit: SettingsRepository.TimerUnit): String {
+    fun formatTimer(seconds: Int, unit: SettingsRepository.TimerUnit): String {
         return if (unit == SettingsRepository.TimerUnit.SECONDS) {
-            (minutes * 60).toString()
+            seconds.toString()
         } else {
-            minutes.toString()
+            (seconds / 60).toString()
         }
     }
 
@@ -36,16 +36,7 @@ object UnitConverter {
     }
 
     fun timerToBase(timerText: String, unit: SettingsRepository.TimerUnit): Int {
-        val value = timerText.toIntOrNull() ?: 0
-        return if (unit == SettingsRepository.TimerUnit.SECONDS) {
-            // If unit is seconds, convert to minutes for base storage (Float for precision if needed, but here it's Int)
-            // But if we want to support seconds in base, we might need to change the model.
-            // For now, let's assume base is seconds if we want to be precise, or just round.
-            // Looking at Routine.kt, restTime is Int.
-            value / 60
-        } else {
-            value
-        }
+        return timerToSeconds(timerText, unit)
     }
 
     fun timerToSeconds(timerText: String, unit: SettingsRepository.TimerUnit): Int {

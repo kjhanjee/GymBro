@@ -20,6 +20,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import com.gymlogger.ai.MacroCalculator
 import com.gymlogger.data.MealRepository
 import com.gymlogger.data.FoodLabelRepository
@@ -310,6 +313,8 @@ fun FoodLabelDialog(onDismiss: () -> Unit) {
                             onValueChange = { itemName = it },
                             label = { Text("Item Name") },
                             modifier = Modifier.weight(1.5f),
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                             colors = TextFieldDefaults.colors(
                                 focusedContainerColor = Color(0xFF2C2C2E),
                                 unfocusedContainerColor = Color(0xFF2C2C2E),
@@ -326,6 +331,8 @@ fun FoodLabelDialog(onDismiss: () -> Unit) {
                             label = { Text("Serving") },
                             placeholder = { Text("e.g. 100g") },
                             modifier = Modifier.weight(1f),
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                             colors = TextFieldDefaults.colors(
                                 focusedContainerColor = Color(0xFF2C2C2E),
                                 unfocusedContainerColor = Color(0xFF2C2C2E),
@@ -342,8 +349,10 @@ fun FoodLabelDialog(onDismiss: () -> Unit) {
                         TextField(
                             value = calories,
                             onValueChange = { if (it.isEmpty() || it.toFloatOrNull() != null) calories = it },
-                            label = { Text("kcal") },
+                            label = { Text("Calories (kcal)") },
                             modifier = Modifier.weight(1f),
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
                             colors = TextFieldDefaults.colors(
                                 focusedContainerColor = Color(0xFF2C2C2E),
                                 unfocusedContainerColor = Color(0xFF2C2C2E),
@@ -357,8 +366,10 @@ fun FoodLabelDialog(onDismiss: () -> Unit) {
                         TextField(
                             value = protein,
                             onValueChange = { if (it.isEmpty() || it.toFloatOrNull() != null) protein = it },
-                            label = { Text("P(g)") },
+                            label = { Text("Protein (g)") },
                             modifier = Modifier.weight(1f),
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
                             colors = TextFieldDefaults.colors(
                                 focusedContainerColor = Color(0xFF2C2C2E),
                                 unfocusedContainerColor = Color(0xFF2C2C2E),
@@ -369,11 +380,16 @@ fun FoodLabelDialog(onDismiss: () -> Unit) {
                             ),
                             shape = RoundedCornerShape(8.dp)
                         )
+                    }
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         TextField(
                             value = carbs,
                             onValueChange = { if (it.isEmpty() || it.toFloatOrNull() != null) carbs = it },
-                            label = { Text("C(g)") },
+                            label = { Text("Carbs (g)") },
                             modifier = Modifier.weight(1f),
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
                             colors = TextFieldDefaults.colors(
                                 focusedContainerColor = Color(0xFF2C2C2E),
                                 unfocusedContainerColor = Color(0xFF2C2C2E),
@@ -387,8 +403,10 @@ fun FoodLabelDialog(onDismiss: () -> Unit) {
                         TextField(
                             value = fats,
                             onValueChange = { if (it.isEmpty() || it.toFloatOrNull() != null) fats = it },
-                            label = { Text("F(g)") },
+                            label = { Text("Fats (g)") },
                             modifier = Modifier.weight(1f),
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
                             colors = TextFieldDefaults.colors(
                                 focusedContainerColor = Color(0xFF2C2C2E),
                                 unfocusedContainerColor = Color(0xFF2C2C2E),
@@ -536,6 +554,8 @@ fun AddMealDialog(onDismiss: () -> Unit, onSave: (Meal) -> Unit) {
                                 },
                                 label = { Text("Item") },
                                 modifier = Modifier.weight(1f),
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                                 colors = TextFieldDefaults.colors(
                                     focusedContainerColor = Color(0xFF2C2C2E),
                                     unfocusedContainerColor = Color(0xFF2C2C2E),
@@ -555,6 +575,8 @@ fun AddMealDialog(onDismiss: () -> Unit, onSave: (Meal) -> Unit) {
                                 },
                                 label = { Text("Weight") },
                                 modifier = Modifier.width(100.dp),
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                                 colors = TextFieldDefaults.colors(
                                     focusedContainerColor = Color(0xFF2C2C2E),
                                     unfocusedContainerColor = Color(0xFF2C2C2E),

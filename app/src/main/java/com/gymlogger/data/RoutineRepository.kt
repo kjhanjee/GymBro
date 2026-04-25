@@ -30,10 +30,10 @@ object RoutineRepository {
             name = "Chest & Triceps",
             exercises = listOf(
                 Routine.RoutineExercise(1, 1, "Bench Press (Barbell)", 0, listOf(
-                    Routine.RoutineExercise.SetConfig(1, WorkoutSet.SetType.NORMAL, 10, 135f, 2, 2)
+                    Routine.RoutineExercise.SetConfig(1, WorkoutSet.SetType.NORMAL, 10, 135f, 2, 120)
                 )),
                 Routine.RoutineExercise(2, 4, "Tricep Pushdown (Cable)", 1, listOf(
-                    Routine.RoutineExercise.SetConfig(2, WorkoutSet.SetType.NORMAL, 12, 40f, 2, 1)
+                    Routine.RoutineExercise.SetConfig(2, WorkoutSet.SetType.NORMAL, 12, 40f, 2, 60)
                 ))
             )
         ),
@@ -42,10 +42,10 @@ object RoutineRepository {
             name = "Back & Biceps",
             exercises = listOf(
                 Routine.RoutineExercise(3, 2, "Deadlift (Barbell)", 0, listOf(
-                    Routine.RoutineExercise.SetConfig(3, WorkoutSet.SetType.NORMAL, 5, 225f, 2, 3)
+                    Routine.RoutineExercise.SetConfig(3, WorkoutSet.SetType.NORMAL, 5, 225f, 2, 180)
                 )),
                 Routine.RoutineExercise(4, 3, "Pull Up", 1, listOf(
-                    Routine.RoutineExercise.SetConfig(4, WorkoutSet.SetType.NORMAL, 10, 0f, 2, 2)
+                    Routine.RoutineExercise.SetConfig(4, WorkoutSet.SetType.NORMAL, 10, 0f, 2, 120)
                 ))
             )
         )
@@ -148,6 +148,7 @@ object RoutineRepository {
                         reps = setConfig.targetReps,
                         weight = setConfig.targetWeight,
                         rir = setConfig.targetRir,
+                        inputType = exercise.inputType,
                         notes = null,
                         isCompleted = false
                     )

@@ -1,5 +1,7 @@
 package com.gymlogger.ui.screens
 
+import android.content.Context
+import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -13,13 +15,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.FileProvider
+import com.gymlogger.model.Routine
 import com.gymlogger.ui.components.GymBroTopAppBar
 import com.gymlogger.ui.theme.GymBroTheme
 import kotlinx.coroutines.launch
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import java.io.File
 
 @Preview(showBackground = true)
 @Composable
@@ -205,12 +213,45 @@ fun HomeScreen(
                             onEditRoutine = { onEditRoutine(routine.id) },
                             onDeleteRoutine = {
                                 routineToDelete = routine.id
+                            },
+                            onShareRoutine = {
+                                shareRoutine(context, routine)
                             }
                         )
                     }
                 }
             }
         }
+    }
+}
+
+private fun shareRoutine(context: Context, routine: Routine) {
+    try {
+        val json = Json { prettyPrint = true }.encodeToString(routine)
+        val fileName = "${routine.name.replace(" ", "_")}_routine.json"
+        
+        val cachePath = File(context.cacheDir, "shared_routines")
+        cachePath.mkdirs()
+        
+        val file = File(cachePath, fileName)
+        file.writeText(json)
+        
+        val contentUri = FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            file
+        )
+        
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "application/json"
+            putExtra(Intent.EXTRA_STREAM, contentUri)
+            putExtra(Intent.EXTRA_SUBJECT, "Sharing Routine: ${routine.name}")
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        
+        context.startActivity(Intent.createChooser(intent, "Share Routine via"))
+    } catch (e: Exception) {
+        e.printStackTrace()
     }
 }
 
@@ -260,7 +301,8 @@ fun HomeRoutineCard(
     exercisesCount: Int,
     onStartWorkout: () -> Unit,
     onEditRoutine: () -> Unit,
-    onDeleteRoutine: () -> Unit
+    onDeleteRoutine: () -> Unit,
+    onShareRoutine: () -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
 
@@ -331,6 +373,16 @@ fun HomeRoutineCard(
                 },
                 leadingIcon = {
                     Icon(Icons.Default.Edit, contentDescription = null, tint = Color.White)
+                }
+            )
+            DropdownMenuItem(
+                text = { Text("Share Routine", color = Color.White) },
+                onClick = {
+                    expanded = false
+                    onShareRoutine()
+                },
+                leadingIcon = {
+                    Icon(Icons.Default.Share, contentDescription = null, tint = Color.White)
                 }
             )
             DropdownMenuItem(

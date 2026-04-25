@@ -16,7 +16,8 @@ data class Routine(
         val exerciseId: Long,
         val exerciseName: String,
         val order: Int,
-        val sets: List<SetConfig>
+        val sets: List<SetConfig>,
+        val inputType: WorkoutSet.InputType = WorkoutSet.InputType.REPS
     ) {
         @Serializable
         data class SetConfig(
@@ -25,7 +26,7 @@ data class Routine(
             val targetReps: Int?,
             val targetWeight: Float?,
             val targetRir: Int? = null,
-            val restTime: Int, // minutes
+            val restTime: Int, // seconds
             val completedSets: List<WorkoutSet> = emptyList()
         )
     }
