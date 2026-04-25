@@ -4,15 +4,22 @@ GymBro is a modern, personal fitness tracking application built with Jetpack Com
 
 ## Latest Developments & Improvements
 
+### Data Layer Refactoring
+- **Room Database Migration**: Completed migration from DataStore to a robust Room database with new DAOs (`ExerciseDao.kt`), converters, and entity definitions. This provides improved data integrity, complex querying, and faster performance.
+- **New Workout Service**: Implemented comprehensive background workout tracking service with foreground service support for uninterrupted logging sessions.
+- **FileProvider Integration**: Added secure file access via FileProvider for exporting workout data and sharing progress reports.
+- **Notification Permissions**: Added `POST_NOTIFICATIONS` permission to enable workout reminders and session completion alerts.
+
 ### UI/UX & Input Stability
 - **Refined Numeric Inputs**: Implemented local `String` state management for Weight, Reps, and RIR fields. This eliminates "0.0" ghosting and flickering during active editing, providing a smooth input experience.
 - **Global Focus Management**: Integrated a global focus removal system in `MainActivity`. Tapping outside any input field or closing the keyboard automatically clears focus, preventing accidental edits.
 - **Professional Instruction Formatting**: Added an intelligent parsing engine for exercise "How-to" instructions. It automatically converts raw blocks of text or inconsistently numbered lists into clean, professional, and properly enumerated step-by-step guides.
+- **New Mini Card Component**: Introduced `WorkoutMiniCard` for compact workout summary displays in lists and overviews.
 
 ### Data & Performance
-- **Room Migration (In Progress)**: Moving from DataStore-based JSON persistence to a robust Room database for improved data integrity, complex querying, and faster performance.
 - **Real-time Analytics**: Replaced mock data in the `ExerciseDetailScreen` with live workout history. Users can now see their actual **Weight Trends** and **Training Frequency** charts based on logged sessions.
 - **Dynamic Logic**: Implemented conditional rendering for exercise charts—if no workouts are logged for a specific exercise, the trends section is hidden to maintain a clean UI.
+- **Extended Default Routines**: Added comprehensive default routine templates for diverse training styles.
 
 ## Features
 
@@ -72,11 +79,18 @@ The "Workout Optimizer" and "Macro Calculator" features require a LiteRT (Tensor
 app/
 ├── src/main/
 │   ├── java/com/gymlogger/
-│   │   ├── data/          # Room DB, DAOs, and Repositories
+│   │   ├── data/          # Room DB, DAOs, Repositories, Converters
+│   │   │   ├── AppDatabase.kt    # Room database definition
+│   │   │   ├── ExerciseDao.kt    # Exercise database access
+│   │   │   ├── ExerciseRepository.kt
+│   │   │   ├── RoutineRepository.kt
+│   │   │   ├── Converters.kt     # Room type converters
+│   │   │   └── WorkoutService.kt  # Background workout tracking
 │   │   ├── model/         # Data entities (Exercise, Routine, Workout)
 │   │   ├── ui/
 │   │   │   ├── navigation/ # Compose Navigation routes
 │   │   │   ├── screens/    # Screen-level Composables
+│   │   │   ├── components/ # Reusable UI components (WorkoutMiniCard)
 │   │   │   └── theme/      # Material 3 Theme definitions
 │   │   └── MainActivity.kt
 ```
