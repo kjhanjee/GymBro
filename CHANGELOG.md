@@ -4,7 +4,15 @@ All notable changes to GymLogger.
 
 ## [Unreleased]
 
-### Bug Fixes and Feature Updates (Apr 25, 2026)
+### Bug Fixes and Feature Updates (Apr 26, 2026)
+
+**Workout Persistence Fix:**
+- Fixed workout state not persisting when app is closed/killed during active workout tracking
+- `WorkoutService` now restores timer state from saved `InProgressWorkout` data on restart
+- Added `ACTION_RESTORE_WORKOUT` to `WorkoutService` for restoring active workout sessions
+- Timer elapsed seconds and workout title now saved continuously alongside exercise data
+- `WorkoutMiniCard` now triggers workout service restoration before navigating to tracker screen
+- Completed workouts now properly clear in-progress workout data from storage
 
 **New Features:**
 - Added `WorkoutMiniCard` UI component for compact workout display
@@ -32,6 +40,10 @@ All notable changes to GymLogger.
 - Removed unused exercises from `ExerciseRepository.kt`
 - Cleaned up `ExerciseRepository.kt.tmp` (removed temp file)
 - Updated `Gradle` wrapper properties
+
+**Exercise Repository:**
+- Updated `RoutineRepository.kt` with corrected exercise IDs to match the `ExerciseRepository`
+- All 58 exercise references in routines now point to valid exercise IDs in the exercise database
 
 **Configuration:**
 - Updated `build.gradle.kts` with new dependencies

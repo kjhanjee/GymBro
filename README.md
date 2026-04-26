@@ -10,6 +10,11 @@ GymBro is a modern, personal fitness tracking application built with Jetpack Com
 - **FileProvider Integration**: Added secure file access via FileProvider for exporting workout data and sharing progress reports.
 - **Notification Permissions**: Added `POST_NOTIFICATIONS` permission to enable workout reminders and session completion alerts.
 
+### Workout Persistence Fix
+- **Active Workout Restoration**: Fixed issue where closing the app during an active workout would lose all tracking data. The app now properly saves timer state (elapsed seconds, workout title) alongside exercise data in real-time.
+- **Service Restoration**: When reopening the app and tapping the `WorkoutMiniCard`, the `WorkoutService` restores the timer from the saved position and continues counting.
+- **Data Integrity**: In-progress workout data is cleared properly when a workout is completed, ensuring clean state between sessions.
+
 ### UI/UX & Input Stability
 - **Refined Numeric Inputs**: Implemented local `String` state management for Weight, Reps, and RIR fields. This eliminates "0.0" ghosting and flickering during active editing, providing a smooth input experience.
 - **Global Focus Management**: Integrated a global focus removal system in `MainActivity`. Tapping outside any input field or closing the keyboard automatically clears focus, preventing accidental edits.
@@ -20,6 +25,8 @@ GymBro is a modern, personal fitness tracking application built with Jetpack Com
 - **Real-time Analytics**: Replaced mock data in the `ExerciseDetailScreen` with live workout history. Users can now see their actual **Weight Trends** and **Training Frequency** charts based on logged sessions.
 - **Dynamic Logic**: Implemented conditional rendering for exercise charts—if no workouts are logged for a specific exercise, the trends section is hidden to maintain a clean UI.
 - **Extended Default Routines**: Added comprehensive default routine templates for diverse training styles.
+- **Exercise ID Normalization**: Updated RoutineRepository to use exercise IDs that exist in the ExerciseRepository. This ensures consistency between the exercise database and workout routines.
+
 
 ## Features
 

@@ -48,6 +48,9 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.foundation.gestures.scrollBy
 import kotlin.math.roundToInt
 import com.gymlogger.data.ExerciseRepository
+import com.gymlogger.data.InProgressExerciseState
+import com.gymlogger.data.InProgressSetState
+import com.gymlogger.data.InProgressWorkout
 import com.gymlogger.data.RoutineRepository
 import com.gymlogger.data.SettingsRepository
 import com.gymlogger.model.Exercise
@@ -244,13 +247,77 @@ fun WorkoutTrackerScreen(
         showExitDialog = true
     }
 
-    // Initialize from routine if provided
+    // Load in-progress workout from storage when entering the workout screen
+    // Only load if this is NOT a routine workout (routineId is null or -1)
+    LaunchedEffect(Unit) {
+        // If there's a routineId, don't try to load in-progress workout (routine will populate it)
+        if (routineId == null || routineId == -1L) {
+            val inProgress = RoutineRepository.getInProgressWorkout(context)
+            if (inProgress != null) {
+                exercises.clear()
+                inProgress.exerciseStates.forEach { inProgressEx ->
+                    val exercise = ExerciseRepository.getExerciseById(inProgressEx.exerciseId)
+                    if (exercise != null) {
+                        val exerciseState = ExerciseState(
+                            exercise = exercise,
+                            restTime = inProgressEx.restTime,
+                            sets = mutableStateListOf(),
+                            inputType = if (inProgressEx.inputType == "REPS") WorkoutSet.InputType.REPS else WorkoutSet.InputType.TIME,
+                            id = inProgressEx.exerciseId
+                        ).apply {
+                            restTimeInput = inProgressEx.restTime.toString()
+                        }
+                        inProgressEx.sets.forEach { inProgressSet ->
+                            exerciseState.sets.add(SetState(
+                                weight = inProgressSet.weight,
+                                reps = inProgressSet.reps,
+                                rir = inProgressSet.rir,
+                                type = WorkoutSet.SetType.valueOf(inProgressSet.type),
+                                isCompleted = inProgressSet.isCompleted
+                            ))
+                        }
+                        exercises.add(exerciseState)
+                    }
+                }
+            }
+        }
+    }
+
+    // Save in-progress workout to storage whenever the workout state changes
+    LaunchedEffect(exercises, secondsElapsed, workoutTitle) {
+        val inProgressExerciseStates = exercises.map { exerciseState ->
+            InProgressExerciseState(
+                exerciseId = exerciseState.exercise.id,
+                exerciseName = exerciseState.exercise.name,
+                restTime = exerciseState.restTime,
+                inputType = exerciseState.inputType.name,
+                sets = exerciseState.sets.map { setState ->
+                    InProgressSetState(
+                        weight = setState.weight,
+                        reps = setState.reps,
+                        rir = setState.rir,
+                        type = setState.type.name,
+                        isCompleted = setState.isCompleted
+                    )
+                }
+            )
+        }
+        val inProgressWorkout = InProgressWorkout(
+            exerciseStates = inProgressExerciseStates,
+            secondsElapsed = secondsElapsed,
+            workoutTitle = workoutTitle
+        )
+        RoutineRepository.saveInProgressWorkout(context, inProgressWorkout)
+    }
+
+    // Initialize from routine if provided - only if in-progress workout doesn't exist for this routine
     LaunchedEffect(routineId) {
-        if (routineId != null) {
+        // Only populate from routine if exercises list is empty (starting new routine workout)
+        // If exercises already exists from in-progress storage, we keep them
+        if (routineId != null && exercises.isEmpty()) {
             val routine = RoutineRepository.getRoutineById(routineId)
             if (routine != null) {
                 workoutTitle = routine.name
-                exercises.clear()
                 routine.exercises.forEach { routineEx ->
                     val exercise = ExerciseRepository.getExerciseById(routineEx.exerciseId)
                     if (exercise != null) {
@@ -319,8 +386,34 @@ fun WorkoutTrackerScreen(
                     date = System.currentTimeMillis(),
                     sets = workoutSets
                 )
-                
+
+                // Save in-progress workout before completed
+                val inProgressExerciseStates = exercises.map { exerciseState ->
+                    InProgressExerciseState(
+                        exerciseId = exerciseState.exercise.id,
+                        exerciseName = exerciseState.exercise.name,
+                        restTime = exerciseState.restTime,
+                        inputType = exerciseState.inputType.name,
+                        sets = exerciseState.sets.map { setState ->
+                            InProgressSetState(
+                                weight = setState.weight,
+                                reps = setState.reps,
+                                rir = setState.rir,
+                                type = setState.type.name,
+                                isCompleted = setState.isCompleted
+                            )
+                        }
+                    )
+                }
+                val inProgressWorkout = InProgressWorkout(
+                    exerciseStates = inProgressExerciseStates,
+                    secondsElapsed = secondsElapsed,
+                    workoutTitle = workoutTitle
+                )
+                RoutineRepository.saveInProgressWorkout(context, inProgressWorkout)
+
                 RoutineRepository.completeWorkout(context, workout)
+                RoutineRepository.clearInProgressWorkout(context)
             }
             onNavigateBack()
         }
@@ -617,12 +710,37 @@ fun WorkoutTrackerScreen(
                             Text("Save Workout")
                         }
                         Button(
-                            onClick = { 
-                                val stopIntent = Intent(context, WorkoutService::class.java).apply {
-                                    action = WorkoutService.ACTION_STOP_WORKOUT
+                            onClick = {
+                                scope.launch {
+                                    // Stop service
+                                    val stopIntent = Intent(context, WorkoutService::class.java).apply {
+                                        action = WorkoutService.ACTION_STOP_WORKOUT
+                                    }
+                                    context.startService(stopIntent)
+                                    // Save in-progress workout before discarding
+                                    val inProgressExerciseStates = exercises.map { exerciseState ->
+                                        InProgressExerciseState(
+                                            exerciseId = exerciseState.exercise.id,
+                                            exerciseName = exerciseState.exercise.name,
+                                            restTime = exerciseState.restTime,
+                                            inputType = exerciseState.inputType.name,
+                                            sets = exerciseState.sets.map { setState ->
+                                                InProgressSetState(
+                                                    weight = setState.weight,
+                                                    reps = setState.reps,
+                                                    rir = setState.rir,
+                                                    type = setState.type.name,
+                                                    isCompleted = setState.isCompleted
+                                                )
+                                            }
+                                        )
+                                    }
+                                    val inProgressWorkout = InProgressWorkout(exerciseStates = inProgressExerciseStates)
+                                    RoutineRepository.saveInProgressWorkout(context, inProgressWorkout)
+                                    // Clear in-progress workout
+                                    RoutineRepository.clearInProgressWorkout(context)
+                                    onNavigateBack()
                                 }
-                                context.startService(stopIntent)
-                                onNavigateBack() 
                             },
                             modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),

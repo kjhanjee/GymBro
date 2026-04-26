@@ -8,10 +8,13 @@ import android.os.Binder
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
+import com.gymlogger.data.InProgressWorkout
+import com.gymlogger.data.RoutineRepository
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import com.gymlogger.MainActivity
+import kotlinx.coroutines.launch
 import java.util.Locale
 
 class WorkoutService : Service() {
@@ -62,18 +65,53 @@ class WorkoutService : Service() {
                 val seconds = intent.getIntExtra(EXTRA_REST_SECONDS, 0)
                 startRestTimer(seconds)
             }
+            ACTION_RESTORE_WORKOUT -> {
+                // Called when app restarts and we need to restore an active workout
+                serviceScope.launch {
+                    val inProgress = RoutineRepository.getInProgressWorkout(applicationContext)
+                    if (inProgress != null && inProgress.exerciseStates.isNotEmpty()) {
+                        _secondsElapsed.value = inProgress.secondsElapsed
+                        _workoutTitle.value = inProgress.workoutTitle
+                        _isActive.value = true
+                        // Start foreground immediately so the notification shows before the UI loads
+                        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                            checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                            // Can't show notification yet, but keep service alive
+                        } else {
+                            startForeground(NOTIFICATION_ID, createNotification())
+                        }
+                        startTimerFromElapsed()
+                    }
+                }
+            }
         }
         return START_STICKY
     }
 
+    private suspend fun startTimerFromElapsed() {
+        if (timerJob != null) return
+        timerJob = serviceScope.launch {
+            while (_isActive.value) {
+                delay(1000)
+                _secondsElapsed.value += 1
+                updateNotification()
+            }
+        }
+    }
+
     private fun startWorkout() {
         if (timerJob != null) return
-        
+
         _isActive.value = true
-        startForeground(NOTIFICATION_ID, createNotification("Workout in progress..."))
-        
+        startForeground(NOTIFICATION_ID, createNotification())
+        startTimer()
+    }
+
+    private fun startTimer() {
+        if (timerJob != null) return
         timerJob = serviceScope.launch {
-            while (isActive) {
+            while (_isActive.value) {
                 delay(1000)
                 _secondsElapsed.value += 1
                 updateNotification()
@@ -158,7 +196,7 @@ class WorkoutService : Service() {
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || 
             checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
-            manager.notify(NOTIFICATION_ID, createNotification(getNotificationContent()))
+            manager.notify(NOTIFICATION_ID, createNotification())
         }
     }
 
@@ -181,7 +219,7 @@ class WorkoutService : Service() {
         }
     }
 
-    private fun createNotification(content: String): Notification {
+    private fun createNotification(): Notification {
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
         }
@@ -189,13 +227,13 @@ class WorkoutService : Service() {
             this, 0, intent,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
-
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("GymBro Workout")
-            .setContentText(content)
+            .setContentTitle("GymBro Workout in Progress")
+            .setContentText(getNotificationContent())
             .setSmallIcon(android.R.drawable.ic_media_play)
             .setContentIntent(pendingIntent)
             .setOngoing(true)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()
     }
 
@@ -213,6 +251,7 @@ class WorkoutService : Service() {
         const val ACTION_START_WORKOUT = "ACTION_START_WORKOUT"
         const val ACTION_STOP_WORKOUT = "ACTION_STOP_WORKOUT"
         const val ACTION_START_REST = "ACTION_START_REST"
+        const val ACTION_RESTORE_WORKOUT = "ACTION_RESTORE_WORKOUT"
         const val EXTRA_REST_SECONDS = "EXTRA_REST_SECONDS"
     }
 }
