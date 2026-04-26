@@ -2,8 +2,6 @@
 
 All notable changes to GymLogger.
 
-## [Unreleased]
-
 ### Bug Fixes and Feature Updates (Apr 26, 2026)
 
 **Workout Persistence Fix:**
