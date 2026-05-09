@@ -7,6 +7,7 @@ import android.media.RingtoneManager
 import android.os.Binder
 import android.os.Build
 import android.os.IBinder
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.gymlogger.data.InProgressWorkout
 import com.gymlogger.data.RoutineRepository
@@ -19,9 +20,12 @@ import java.util.Locale
 
 class WorkoutService : Service() {
 
-    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var timerJob: Job? = null
     private var restTimerJob: Job? = null
+
+    private var startTimeMillis: Long? = null
+    private var restEndTimeMillis: Long? = null
 
     private val _secondsElapsed = MutableStateFlow(0L)
     val secondsElapsed = _secondsElapsed.asStateFlow()
@@ -54,72 +58,107 @@ class WorkoutService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        Log.d("WorkoutService", "onCreate")
         createNotificationChannel()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        when (intent?.action) {
+        Log.d("WorkoutService", "onStartCommand: action=${intent?.action}")
+        
+        if (intent == null) {
+            // Sticky restart
+            restoreStateFromRepository()
+            return START_STICKY
+        }
+
+        when (intent.action) {
             ACTION_START_WORKOUT -> startWorkout()
             ACTION_STOP_WORKOUT -> stopWorkout()
             ACTION_START_REST -> {
                 val seconds = intent.getIntExtra(EXTRA_REST_SECONDS, 0)
                 startRestTimer(seconds)
             }
-            ACTION_RESTORE_WORKOUT -> {
-                // Called when app restarts and we need to restore an active workout
-                serviceScope.launch {
-                    val inProgress = RoutineRepository.getInProgressWorkout(applicationContext)
-                    if (inProgress != null && inProgress.exerciseStates.isNotEmpty()) {
-                        _secondsElapsed.value = inProgress.secondsElapsed
-                        _workoutTitle.value = inProgress.workoutTitle
-                        _isActive.value = true
-                        // Start foreground immediately so the notification shows before the UI loads
-                        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                            checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                            // Can't show notification yet, but keep service alive
-                        } else {
-                            startForeground(NOTIFICATION_ID, createNotification())
-                        }
-                        startTimerFromElapsed()
-                    }
-                }
-            }
+            ACTION_RESTORE_WORKOUT -> restoreStateFromRepository()
         }
         return START_STICKY
     }
 
-    private suspend fun startTimerFromElapsed() {
-        if (timerJob != null) return
-        timerJob = serviceScope.launch {
-            while (_isActive.value) {
-                delay(1000)
-                _secondsElapsed.value += 1
-                updateNotification()
+    private fun restoreStateFromRepository() {
+        serviceScope.launch {
+            val inProgress = RoutineRepository.getInProgressWorkout(applicationContext)
+            if (inProgress != null && (inProgress.startTimeMillis != null || inProgress.exerciseStates.isNotEmpty())) {
+                Log.d("WorkoutService", "Restoring workout state")
+                
+                _workoutTitle.value = inProgress.workoutTitle
+                _isActive.value = true
+                startTimeMillis = inProgress.startTimeMillis ?: (System.currentTimeMillis() - inProgress.secondsElapsed * 1000)
+                restEndTimeMillis = inProgress.restEndTimeMillis
+
+                // Calculate completed/total sets from exercise states
+                _totalSets.value = inProgress.exerciseStates.sumOf { it.sets.size }
+                _completedSets.value = inProgress.exerciseStates.sumOf { it.sets.count { s -> s.isCompleted } }
+
+                // Immediate notification for foreground status
+                ensureForeground()
+                
+                startTimer()
+                
+                restEndTimeMillis?.let { endTime ->
+                    val remaining = ((endTime - System.currentTimeMillis()) / 1000).toInt()
+                    if (remaining > 0) {
+                        startRestTimer(remaining, isRestoration = true)
+                    } else {
+                        restEndTimeMillis = null
+                    }
+                }
+            } else {
+                Log.d("WorkoutService", "No workout to restore, stopping service")
+                stopSelf()
             }
         }
     }
 
+    private fun ensureForeground() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            // Permission not granted, but we must call startForeground on Android 12+
+            // On specialUse, we should have the permission though.
+        }
+        startForeground(NOTIFICATION_ID, createNotification())
+    }
+
     private fun startWorkout() {
-        if (timerJob != null) return
+        if (_isActive.value) return
 
         _isActive.value = true
-        startForeground(NOTIFICATION_ID, createNotification())
+        startTimeMillis = System.currentTimeMillis()
+        
+        serviceScope.launch {
+            RoutineRepository.updateInProgressWorkout(applicationContext) { 
+                it.copy(startTimeMillis = startTimeMillis) 
+            }
+        }
+
+        ensureForeground()
         startTimer()
     }
 
     private fun startTimer() {
-        if (timerJob != null) return
+        timerJob?.cancel()
         timerJob = serviceScope.launch {
             while (_isActive.value) {
-                delay(1000)
-                _secondsElapsed.value += 1
+                startTimeMillis?.let { start ->
+                    val elapsed = (System.currentTimeMillis() - start) / 1000
+                    _secondsElapsed.value = elapsed
+                }
                 updateNotification()
+                delay(1000)
             }
         }
     }
 
     fun stopWorkout() {
+        Log.d("WorkoutService", "stopWorkout")
         timerJob?.cancel()
         timerJob = null
         restTimerJob?.cancel()
@@ -130,6 +169,9 @@ class WorkoutService : Service() {
         _completedSets.value = 0
         _isRestTimerActive.value = false
         _restSecondsRemaining.value = 0
+        startTimeMillis = null
+        restEndTimeMillis = null
+        
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
@@ -141,20 +183,40 @@ class WorkoutService : Service() {
         updateNotification()
     }
 
-    fun startRestTimer(seconds: Int) {
+    fun startRestTimer(seconds: Int, isRestoration: Boolean = false) {
         restTimerJob?.cancel()
+        
+        if (!isRestoration) {
+            restEndTimeMillis = System.currentTimeMillis() + (seconds * 1000)
+            serviceScope.launch {
+                RoutineRepository.updateInProgressWorkout(applicationContext) {
+                    it.copy(restEndTimeMillis = restEndTimeMillis)
+                }
+            }
+        }
+
         _restSecondsRemaining.value = seconds
         _isRestTimerActive.value = true
         
         restTimerJob = serviceScope.launch {
-            while (_restSecondsRemaining.value > 0) {
-                delay(1000)
-                _restSecondsRemaining.value -= 1
+            while (_isRestTimerActive.value) {
+                restEndTimeMillis?.let { end ->
+                    val remaining = ((end - System.currentTimeMillis()) / 1000).toInt()
+                    if (remaining <= 0) {
+                        _restSecondsRemaining.value = 0
+                        _isRestTimerActive.value = false
+                        restEndTimeMillis = null
+                        RoutineRepository.updateInProgressWorkout(applicationContext) {
+                            it.copy(restEndTimeMillis = null)
+                        }
+                        playAlarm()
+                    } else {
+                        _restSecondsRemaining.value = remaining
+                    }
+                }
                 updateNotification()
+                delay(1000)
             }
-            _isRestTimerActive.value = false
-            playAlarm()
-            updateNotification()
         }
     }
 
@@ -162,6 +224,12 @@ class WorkoutService : Service() {
         restTimerJob?.cancel()
         _isRestTimerActive.value = false
         _restSecondsRemaining.value = 0
+        restEndTimeMillis = null
+        serviceScope.launch {
+            RoutineRepository.updateInProgressWorkout(applicationContext) {
+                it.copy(restEndTimeMillis = null)
+            }
+        }
         updateNotification()
     }
 
@@ -171,7 +239,7 @@ class WorkoutService : Service() {
             val r = RingtoneManager.getRingtone(applicationContext, notification)
             r.play()
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e("WorkoutService", "Error playing alarm", e)
         }
     }
 
@@ -234,13 +302,14 @@ class WorkoutService : Service() {
             .setContentIntent(pendingIntent)
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .build()
     }
 
     override fun onDestroy() {
+        Log.d("WorkoutService", "onDestroy")
         _isActive.value = false
         _isRestTimerActive.value = false
-        _secondsElapsed.value = 0
         super.onDestroy()
         serviceScope.cancel()
     }

@@ -83,7 +83,7 @@ object RoutineRepository {
                     Routine.RoutineExercise.SetConfig(26, WorkoutSet.SetType.NORMAL, 10, 50f, 2, 90),
                     Routine.RoutineExercise.SetConfig(27, WorkoutSet.SetType.NORMAL, 8, 55f, 1, 120)
                 )),
-                Routine.RoutineExercise(2, 21007, "Single-Arm Lat Pulldown (Cable)", 1, listOf(
+                Routine.RoutineExercise(2, 21023, "Cable One-Arm Lat Pulldown", 1, listOf(
                     Routine.RoutineExercise.SetConfig(28, WorkoutSet.SetType.NORMAL, 12, 25f, 2, 75),
                     Routine.RoutineExercise.SetConfig(29, WorkoutSet.SetType.NORMAL, 10, 30f, 1, 75),
                     Routine.RoutineExercise.SetConfig(30, WorkoutSet.SetType.NORMAL, 10, 30f, 1, 90)
@@ -289,12 +289,12 @@ object RoutineRepository {
                     Routine.RoutineExercise.SetConfig(134, WorkoutSet.SetType.NORMAL, 15, 45f, 2, 75),
                     Routine.RoutineExercise.SetConfig(135, WorkoutSet.SetType.NORMAL, 12, 45f, 2, 75)
                 )),
-                Routine.RoutineExercise(2, 21002, "Seated Cable Row (Wide Grip)", 1, listOf(
+                Routine.RoutineExercise(2, 21002, "Cable Seated Row", 1, listOf(
                     Routine.RoutineExercise.SetConfig(136, WorkoutSet.SetType.NORMAL, 15, 40f, 3, 75),
                     Routine.RoutineExercise.SetConfig(137, WorkoutSet.SetType.NORMAL, 12, 45f, 2, 75),
                     Routine.RoutineExercise.SetConfig(138, WorkoutSet.SetType.NORMAL, 12, 45f, 2, 75)
                 )),
-                Routine.RoutineExercise(3, 21003, "Straight Arm Cable Pulldown", 2, listOf(
+                Routine.RoutineExercise(3, 21012, "Cable Shoulder Extension", 2, listOf(
                     Routine.RoutineExercise.SetConfig(139, WorkoutSet.SetType.NORMAL, 15, 20f, 3, 60),
                     Routine.RoutineExercise.SetConfig(140, WorkoutSet.SetType.NORMAL, 15, 25f, 2, 60),
                     Routine.RoutineExercise.SetConfig(141, WorkoutSet.SetType.NORMAL, 12, 25f, 2, 60)
@@ -304,7 +304,7 @@ object RoutineRepository {
                     Routine.RoutineExercise.SetConfig(143, WorkoutSet.SetType.NORMAL, 12, 15f, 2, 75),
                     Routine.RoutineExercise.SetConfig(144, WorkoutSet.SetType.NORMAL, 12, 15f, 2, 75)
                 )),
-                Routine.RoutineExercise(5, 21005, "Chest Supported Back Extension", 4, listOf(
+                Routine.RoutineExercise(5, 21024, "Machine Back Extension", 4, listOf(
                     Routine.RoutineExercise.SetConfig(145, WorkoutSet.SetType.NORMAL, 15, 0f, 3, 60),
                     Routine.RoutineExercise.SetConfig(146, WorkoutSet.SetType.NORMAL, 15, 5f, 2, 60)
                 )),
@@ -313,12 +313,12 @@ object RoutineRepository {
                     Routine.RoutineExercise.SetConfig(148, WorkoutSet.SetType.NORMAL, 12, 12.5f, 2, 75),
                     Routine.RoutineExercise.SetConfig(149, WorkoutSet.SetType.NORMAL, 12, 12.5f, 2, 75)
                 )),
-                Routine.RoutineExercise(7, 8107, "Dumbbell Lateral Raise", 6, listOf(
+                Routine.RoutineExercise(7, 8100, "Dumbbell Lateral Raise", 6, listOf(
                     Routine.RoutineExercise.SetConfig(150, WorkoutSet.SetType.NORMAL, 15, 5f, 3, 60),
                     Routine.RoutineExercise.SetConfig(151, WorkoutSet.SetType.NORMAL, 15, 7.5f, 2, 60),
                     Routine.RoutineExercise.SetConfig(152, WorkoutSet.SetType.NORMAL, 15, 7.5f, 2, 60)
                 )),
-                Routine.RoutineExercise(8, 8108, "Reverse Pec Deck", 7, listOf(
+                Routine.RoutineExercise(8, 8103, "Machine Reverse Fly", 7, listOf(
                     Routine.RoutineExercise.SetConfig(153, WorkoutSet.SetType.NORMAL, 15, 25f, 3, 60),
                     Routine.RoutineExercise.SetConfig(154, WorkoutSet.SetType.NORMAL, 15, 30f, 2, 60),
                     Routine.RoutineExercise.SetConfig(155, WorkoutSet.SetType.NORMAL, 12, 30f, 2, 60)
@@ -336,7 +336,7 @@ object RoutineRepository {
                     Routine.RoutineExercise.SetConfig(2, WorkoutSet.SetType.NORMAL, 8, 17.5f, 2, 120),
                     Routine.RoutineExercise.SetConfig(3, WorkoutSet.SetType.NORMAL, 8, 17.5f, 1, 120)
                 )),
-                Routine.RoutineExercise(2, 21002, "Seated Cable Row (Wide Grip)", 1, listOf(
+                Routine.RoutineExercise(2, 21002, "Cable Seated Row", 1, listOf(
                     Routine.RoutineExercise.SetConfig(4, WorkoutSet.SetType.NORMAL, 12, 40f, 2, 90),
                     Routine.RoutineExercise.SetConfig(5, WorkoutSet.SetType.NORMAL, 10, 45f, 2, 90),
                     Routine.RoutineExercise.SetConfig(6, WorkoutSet.SetType.NORMAL, 10, 45f, 1, 90)
@@ -386,7 +386,7 @@ object RoutineRepository {
                     Routine.RoutineExercise.SetConfig(26, WorkoutSet.SetType.NORMAL, 8, 22.5f, 2, 120),
                     Routine.RoutineExercise.SetConfig(27, WorkoutSet.SetType.NORMAL, 8, 22.5f, 1, 120)
                 )),
-                Routine.RoutineExercise(4, 8107, "Dumbbell Lateral Raise", 3, listOf(
+                Routine.RoutineExercise(4, 8100, "Dumbbell Lateral Raise", 3, listOf(
                     Routine.RoutineExercise.SetConfig(28, WorkoutSet.SetType.NORMAL, 15, 7.5f, 2, 60),
                     Routine.RoutineExercise.SetConfig(29, WorkoutSet.SetType.NORMAL, 12, 7.5f, 1, 60)
                 )),
@@ -572,9 +572,6 @@ object RoutineRepository {
     }
 
     suspend fun saveInProgressWorkout(context: Context, workoutInProgress: InProgressWorkout) {
-        // Only save if there are exercises (not an empty workout)
-        if (workoutInProgress.exerciseStates.isEmpty()) return
-
         val json = Json.encodeToString(workoutInProgress)
         context.dataStore.edit { preferences ->
             preferences[IN_PROGRESS_WORKOUTS_KEY] = json
@@ -599,12 +596,30 @@ object RoutineRepository {
             preferences[IN_PROGRESS_WORKOUTS_KEY] = ""
         }
     }
+
+    suspend fun updateInProgressWorkout(context: Context, update: (InProgressWorkout) -> InProgressWorkout) {
+        context.dataStore.edit { preferences ->
+            val currentJson = preferences[IN_PROGRESS_WORKOUTS_KEY]
+            val current = if (!currentJson.isNullOrEmpty()) {
+                try {
+                    Json.decodeFromString<InProgressWorkout>(currentJson)
+                } catch (e: Exception) {
+                    InProgressWorkout()
+                }
+            } else InProgressWorkout()
+
+            val updated = update(current)
+            preferences[IN_PROGRESS_WORKOUTS_KEY] = Json.encodeToString(updated)
+        }
+    }
 }
 
 @Serializable
 data class InProgressWorkout(
     val exerciseStates: List<InProgressExerciseState> = emptyList(),
     val secondsElapsed: Long = 0L,
+    val startTimeMillis: Long? = null,
+    val restEndTimeMillis: Long? = null,
     val workoutTitle: String = "Tracked Workout"
 )
 

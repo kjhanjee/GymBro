@@ -44,6 +44,21 @@ object MealRepository {
     }
 
     suspend fun addMeal(context: Context, meal: Meal) {
+        val calculatedMacros = calculateMacrosForMeal(meal)
+        val id = (_meals.value.maxOfOrNull { it.id } ?: 0L) + 1L
+        val newMeal = meal.copy(id = id, macros = calculatedMacros)
+        _meals.value = _meals.value + newMeal
+        saveMeals(context)
+    }
+
+    suspend fun updateMeal(context: Context, meal: Meal) {
+        val calculatedMacros = calculateMacrosForMeal(meal)
+        val updatedMeal = meal.copy(macros = calculatedMacros)
+        _meals.value = _meals.value.map { if (it.id == meal.id) updatedMeal else it }
+        saveMeals(context)
+    }
+
+    private suspend fun calculateMacrosForMeal(meal: Meal): MealMacros {
         // Fetch all saved labels
         val savedLabels = FoodLabelRepository.labels.value
         
@@ -61,7 +76,7 @@ object MealRepository {
         val jsonResponse = MacroCalculator.calculateMacros(mealDescription, labelsInfo)
         android.util.Log.d("MealRepository", "AI Response: $jsonResponse")
         
-        val calculatedMacros = try {
+        return try {
             if (jsonResponse != null) {
                 // Strip potential markdown format and common noise
                 val cleanJson = jsonResponse.trim()
@@ -88,11 +103,6 @@ object MealRepository {
             android.util.Log.e("MealRepository", "Failed to parse macros JSON", e)
             MealMacros(0f, 0f, 0f, 0f)
         }
-
-        val id = (_meals.value.maxOfOrNull { it.id } ?: 0L) + 1L
-        val newMeal = meal.copy(id = id, macros = calculatedMacros)
-        _meals.value = _meals.value + newMeal
-        saveMeals(context)
     }
 
     suspend fun deleteMeal(context: Context, id: Long) {

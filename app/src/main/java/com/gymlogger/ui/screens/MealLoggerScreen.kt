@@ -6,9 +6,13 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Label
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import com.gymlogger.ui.components.GymBroTopAppBar
@@ -40,9 +44,27 @@ fun MealLoggerScreen(onNavigateBack: () -> Unit) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     var showAddMealDialog by remember { mutableStateOf(false) }
+    var editingMeal by remember { mutableStateOf<Meal?>(null) }
     var showLabelDialog by remember { mutableStateOf(false) }
     var isSaving by remember { mutableStateOf(false) }
     var isInitializingAi by remember { mutableStateOf(false) }
+
+    val groupedMeals = remember(meals) {
+        meals.groupBy {
+            val cal = java.util.Calendar.getInstance().apply {
+                timeInMillis = it.date
+                set(java.util.Calendar.HOUR_OF_DAY, 0)
+                set(java.util.Calendar.MINUTE, 0)
+                set(java.util.Calendar.SECOND, 0)
+                set(java.util.Calendar.MILLISECOND, 0)
+            }
+            cal.timeInMillis
+        }.mapValues { entry ->
+            entry.value.groupBy { it.type }.toList().sortedBy { it.first.ordinal }
+        }.toSortedMap(compareByDescending { it })
+    }
+
+    val expandedGroups = remember { mutableStateMapOf<String, Boolean>() }
 
     LaunchedEffect(Unit) {
         FoodLabelRepository.init(context)
@@ -87,29 +109,67 @@ fun MealLoggerScreen(onNavigateBack: () -> Unit) {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            items(meals) { meal ->
-                MealCard(meal = meal, onDelete = {
-                    coroutineScope.launch {
-                        MealRepository.deleteMeal(context, meal.id)
+            groupedMeals.forEach { (dateMillis, typesWithMeals) ->
+                item(key = "date-$dateMillis") {
+                    DateHeader(dateMillis)
+                }
+
+                typesWithMeals.forEach { (type, typeMeals) ->
+                    val groupKey = "$dateMillis-${type.name}"
+                    val isExpanded = expandedGroups[groupKey] ?: true
+
+                    item(key = "type-$groupKey") {
+                        MealTypeHeader(
+                            type = type,
+                            isExpanded = isExpanded,
+                            onToggle = { expandedGroups[groupKey] = !isExpanded }
+                        )
                     }
-                })
+
+                    if (isExpanded) {
+                        items(typeMeals, key = { it.id }) { meal ->
+                            Box(modifier = Modifier.padding(start = 12.dp, bottom = 8.dp)) {
+                                MealCard(
+                                    meal = meal,
+                                    onEdit = { editingMeal = meal },
+                                    onDelete = {
+                                        coroutineScope.launch {
+                                            MealRepository.deleteMeal(context, meal.id)
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+                
+                item { Spacer(modifier = Modifier.height(12.dp)) }
             }
         }
 
-        if (showAddMealDialog) {
+        if (showAddMealDialog || editingMeal != null) {
             AddMealDialog(
-                onDismiss = { showAddMealDialog = false },
+                initialMeal = editingMeal,
+                onDismiss = { 
+                    showAddMealDialog = false
+                    editingMeal = null
+                },
                 onSave = { meal ->
                     coroutineScope.launch {
                         isSaving = true
                         try {
-                            MealRepository.addMeal(context, meal)
+                            if (editingMeal != null) {
+                                MealRepository.updateMeal(context, meal)
+                            } else {
+                                MealRepository.addMeal(context, meal)
+                            }
                         } finally {
                             isSaving = false
                             showAddMealDialog = false
+                            editingMeal = null
                         }
                     }
                 }
@@ -173,7 +233,7 @@ fun MealLoggerScreen(onNavigateBack: () -> Unit) {
 }
 
 @Composable
-fun MealCard(meal: Meal, onDelete: () -> Unit) {
+fun MealCard(meal: Meal, onEdit: () -> Unit, onDelete: () -> Unit) {
     var expanded by remember { mutableStateOf(false) }
 
     Surface(
@@ -183,19 +243,33 @@ fun MealCard(meal: Meal, onDelete: () -> Unit) {
         color = Color(0xFF1C1C1E),
         shape = RoundedCornerShape(12.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(12.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = meal.type.name.lowercase().replaceFirstChar { it.uppercase() },
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        val summaryText = if (meal.items.isEmpty()) "No items" 
+                                          else meal.items.joinToString(", ") { it.name }
+                        Text(
+                            text = if (summaryText.length > 40) summaryText.take(37) + "..." else summaryText,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = Color.White,
+                            fontWeight = FontWeight.Medium
+                        )
+                        val timeString = java.text.SimpleDateFormat("h:mm a", java.util.Locale.getDefault())
+                            .format(java.util.Date(meal.date))
+                        Text(
+                            text = "$timeString • ${meal.macros.calories.toInt()} kcal",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color(0xFF8E8E93)
+                        )
+                    }
                     Icon(
                         imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
                         contentDescription = null,
@@ -203,20 +277,29 @@ fun MealCard(meal: Meal, onDelete: () -> Unit) {
                         modifier = Modifier.size(20.dp)
                     )
                 }
-                IconButton(onClick = onDelete) {
-                    Icon(
-                        Icons.Default.Delete,
-                        contentDescription = "Delete",
-                        tint = Color.Red,
-                        modifier = Modifier.size(20.dp)
-                    )
+                Row {
+                    IconButton(onClick = onEdit) {
+                        Icon(
+                            Icons.Default.Edit,
+                            contentDescription = "Edit",
+                            tint = Color(0xFF8E8E93),
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    IconButton(onClick = onDelete) {
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = "Delete",
+                            tint = Color.Red.copy(alpha = 0.6f),
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
             }
 
             if (expanded) {
                 Spacer(modifier = Modifier.height(12.dp))
                 
-                // Macros Placeholder Section
                 Text(
                     text = "Estimated Macros",
                     style = MaterialTheme.typography.labelMedium,
@@ -228,7 +311,7 @@ fun MealCard(meal: Meal, onDelete: () -> Unit) {
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    MacroItem("Calories", "${meal.macros.calories.toInt()} kcal")
+                    MacroItem("Calories", "${meal.macros.calories.toInt()}")
                     MacroItem("Protein", "${meal.macros.protein.toInt()}g")
                     MacroItem("Carbs", "${meal.macros.carbs.toInt()}g")
                     MacroItem("Fats", "${meal.macros.fats.toInt()}g")
@@ -252,19 +335,56 @@ fun MealCard(meal: Meal, onDelete: () -> Unit) {
                             .padding(vertical = 2.dp),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text(text = item.name, color = Color.White)
-                        Text(text = item.weight, color = Color(0xFF8E8E93))
+                        Text(text = item.name, color = Color.White, style = MaterialTheme.typography.bodyMedium)
+                        Text(text = item.weight, color = Color(0xFF8E8E93), style = MaterialTheme.typography.bodyMedium)
                     }
                 }
-            } else {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "${meal.items.size} items",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF8E8E93)
-                )
             }
         }
+    }
+}
+
+@Composable
+fun DateHeader(dateMillis: Long) {
+    val dateString = java.text.SimpleDateFormat("EEEE, MMM dd", java.util.Locale.getDefault())
+        .format(java.util.Date(dateMillis))
+    Text(
+        text = dateString,
+        style = MaterialTheme.typography.titleLarge,
+        color = Color.White,
+        fontWeight = FontWeight.Bold,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 16.dp, bottom = 8.dp)
+    )
+}
+
+@Composable
+fun MealTypeHeader(
+    type: MealType,
+    isExpanded: Boolean,
+    onToggle: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onToggle() }
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = if (isExpanded) Icons.Default.KeyboardArrowDown else Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(24.dp)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = type.name.lowercase().replaceFirstChar { it.uppercase() },
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.Bold
+        )
     }
 }
 
@@ -494,10 +614,16 @@ fun MacroItem(label: String, value: String) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddMealDialog(onDismiss: () -> Unit, onSave: (Meal) -> Unit) {
-    var mealType by remember { mutableStateOf(MealType.BREAKFAST) }
-    var items by remember { mutableStateOf(listOf(MealItem(0, "", ""))) }
+fun AddMealDialog(
+    initialMeal: Meal? = null,
+    onDismiss: () -> Unit,
+    onSave: (Meal) -> Unit
+) {
+    var mealType by remember { mutableStateOf(initialMeal?.type ?: MealType.BREAKFAST) }
+    var items by remember { mutableStateOf(initialMeal?.items ?: listOf(MealItem(0, "", ""))) }
     var expanded by remember { mutableStateOf(false) }
+    var mealDate by remember { mutableStateOf(initialMeal?.date ?: System.currentTimeMillis()) }
+    val context = LocalContext.current
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
@@ -509,95 +635,132 @@ fun AddMealDialog(onDismiss: () -> Unit, onSave: (Meal) -> Unit) {
                 modifier = Modifier.padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Text("Add Meal", style = MaterialTheme.typography.headlineSmall, color = Color.White)
+                Text(
+                    text = if (initialMeal == null) "Add Meal" else "Edit Meal",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = Color.White
+                )
 
-                // Meal Type Dropdown
-                Box {
+                Column(
+                    modifier = Modifier
+                        .weight(1f, fill = false)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    // Date Selection
+                    val calendar = java.util.Calendar.getInstance().apply { timeInMillis = mealDate }
+                    val dateString = java.text.SimpleDateFormat("MMM dd, yyyy", java.util.Locale.getDefault()).format(calendar.time)
+                    
                     OutlinedButton(
-                        onClick = { expanded = true },
+                        onClick = {
+                            android.app.DatePickerDialog(
+                                context,
+                                { _, year, month, dayOfMonth ->
+                                    val selectedCalendar = java.util.Calendar.getInstance()
+                                    selectedCalendar.set(year, month, dayOfMonth)
+                                    mealDate = selectedCalendar.timeInMillis
+                                },
+                                calendar.get(java.util.Calendar.YEAR),
+                                calendar.get(java.util.Calendar.MONTH),
+                                calendar.get(java.util.Calendar.DAY_OF_MONTH)
+                            ).show()
+                        },
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
                     ) {
-                        Text(mealType.name.lowercase().replaceFirstChar { it.uppercase() })
-                        Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                        Icon(Icons.Default.DateRange, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text(dateString)
                     }
-                    DropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = { expanded = false },
-                        modifier = Modifier.background(Color(0xFF2C2C2E))
-                    ) {
-                        MealType.values().forEach { type ->
-                            DropdownMenuItem(
-                                text = { Text(type.name.lowercase().replaceFirstChar { it.uppercase() }, color = Color.White) },
-                                onClick = {
-                                    mealType = type
-                                    expanded = false
-                                }
-                            )
-                        }
-                    }
-                }
 
-                // Meal Items
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items.forEachIndexed { index, item ->
-                        Row(
+                    // Meal Type Dropdown
+                    Box {
+                        OutlinedButton(
+                            onClick = { expanded = true },
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
                         ) {
-                            TextField(
-                                value = item.name,
-                                onValueChange = { name ->
-                                    val newList = items.toMutableList()
-                                    newList[index] = item.copy(name = name)
-                                    items = newList
-                                },
-                                label = { Text("Item") },
-                                modifier = Modifier.weight(1f),
-                                singleLine = true,
-                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                                colors = TextFieldDefaults.colors(
-                                    focusedContainerColor = Color(0xFF2C2C2E),
-                                    unfocusedContainerColor = Color(0xFF2C2C2E),
-                                    focusedTextColor = Color.White,
-                                    unfocusedTextColor = Color.White,
-                                    focusedIndicatorColor = Color.Transparent,
-                                    unfocusedIndicatorColor = Color.Transparent
-                                ),
-                                shape = RoundedCornerShape(8.dp)
-                            )
-                            TextField(
-                                value = item.weight,
-                                onValueChange = { weight ->
-                                    val newList = items.toMutableList()
-                                    newList[index] = item.copy(weight = weight)
-                                    items = newList
-                                },
-                                label = { Text("Weight") },
-                                modifier = Modifier.width(100.dp),
-                                singleLine = true,
-                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                                colors = TextFieldDefaults.colors(
-                                    focusedContainerColor = Color(0xFF2C2C2E),
-                                    unfocusedContainerColor = Color(0xFF2C2C2E),
-                                    focusedTextColor = Color.White,
-                                    unfocusedTextColor = Color.White,
-                                    focusedIndicatorColor = Color.Transparent,
-                                    unfocusedIndicatorColor = Color.Transparent
-                                ),
-                                shape = RoundedCornerShape(8.dp)
-                            )
+                            Text(mealType.name.lowercase().replaceFirstChar { it.uppercase() })
+                            Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                        }
+                        DropdownMenu(
+                            expanded = expanded,
+                            onDismissRequest = { expanded = false },
+                            modifier = Modifier.background(Color(0xFF2C2C2E))
+                        ) {
+                            MealType.values().forEach { type ->
+                                DropdownMenuItem(
+                                    text = { Text(type.name.lowercase().replaceFirstChar { it.uppercase() }, color = Color.White) },
+                                    onClick = {
+                                        mealType = type
+                                        expanded = false
+                                    }
+                                )
+                            }
                         }
                     }
-                }
 
-                TextButton(
-                    onClick = { items = items + MealItem(0, "", "") },
-                    modifier = Modifier.align(Alignment.CenterHorizontally)
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = null)
-                    Spacer(Modifier.width(4.dp))
-                    Text("Add Item")
+                    // Meal Items
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items.forEachIndexed { index, item ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                TextField(
+                                    value = item.name,
+                                    onValueChange = { name ->
+                                        val newList = items.toMutableList()
+                                        newList[index] = item.copy(name = name)
+                                        items = newList
+                                    },
+                                    label = { Text("Item") },
+                                    modifier = Modifier.weight(1f),
+                                    singleLine = true,
+                                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                                    colors = TextFieldDefaults.colors(
+                                        focusedContainerColor = Color(0xFF2C2C2E),
+                                        unfocusedContainerColor = Color(0xFF2C2C2E),
+                                        focusedTextColor = Color.White,
+                                        unfocusedTextColor = Color.White,
+                                        focusedIndicatorColor = Color.Transparent,
+                                        unfocusedIndicatorColor = Color.Transparent
+                                    ),
+                                    shape = RoundedCornerShape(8.dp)
+                                )
+                                TextField(
+                                    value = item.weight,
+                                    onValueChange = { weight ->
+                                        val newList = items.toMutableList()
+                                        newList[index] = item.copy(weight = weight)
+                                        items = newList
+                                    },
+                                    label = { Text("Weight") },
+                                    modifier = Modifier.width(100.dp),
+                                    singleLine = true,
+                                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                                    colors = TextFieldDefaults.colors(
+                                        focusedContainerColor = Color(0xFF2C2C2E),
+                                        unfocusedContainerColor = Color(0xFF2C2C2E),
+                                        focusedTextColor = Color.White,
+                                        unfocusedTextColor = Color.White,
+                                        focusedIndicatorColor = Color.Transparent,
+                                        unfocusedIndicatorColor = Color.Transparent
+                                    ),
+                                    shape = RoundedCornerShape(8.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    TextButton(
+                        onClick = { items = items + MealItem(0, "", "") },
+                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = null)
+                        Spacer(Modifier.width(4.dp))
+                        Text("Add Item")
+                    }
                 }
 
                 Row(
@@ -610,7 +773,12 @@ fun AddMealDialog(onDismiss: () -> Unit, onSave: (Meal) -> Unit) {
                     }
                     Button(
                         onClick = {
-                            onSave(Meal(0, System.currentTimeMillis(), mealType, items.filter { it.name.isNotBlank() }))
+                            val savedMeal = initialMeal?.copy(
+                                date = mealDate,
+                                type = mealType,
+                                items = items.filter { it.name.isNotBlank() }
+                            ) ?: Meal(0, mealDate, mealType, items.filter { it.name.isNotBlank() })
+                            onSave(savedMeal)
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                     ) {

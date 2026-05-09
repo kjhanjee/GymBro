@@ -5,16 +5,31 @@ import com.gymlogger.model.MuscleGroup
 import com.gymlogger.model.Exercise.Equipment
 import com.gymlogger.model.Exercise.ExerciseCategory
 import android.content.Context
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 
-object ExerciseRepository {
+object ExerciseRepository : IExerciseRepository {
     private var exerciseDao: ExerciseDao? = null
 
     fun init(context: Context) {
         exerciseDao = AppDatabase.getDatabase(context).exerciseDao()
+        seedDatabase()
+    }
+
+    private fun seedDatabase() {
+        CoroutineScope(Dispatchers.IO).launch {
+            exerciseDao?.let { dao ->
+                val existing = dao.getAllExercises().first()
+                if (existing.isEmpty()) {
+                    exerciseDatabase.forEach { dao.insertExercise(it) }
+                }
+            }
+        }
     }
 
     val exerciseDatabase: List<Exercise> = listOf(
@@ -83,6 +98,7 @@ object ExerciseRepository {
         Exercise(1062L, "Parallel Bar Hip Flexion", listOf(MuscleGroup.CORE), Equipment.MACHINE, "1. Start by stepping in between parallel bars.\n2. Placing your arms on the rests allowing your legs to hang and extend down below you.\n3. As soon as you are in position.\n4. Bring your knees towards your chest in a diagonal direction.\n5. Holding near the top contracting your abs for a few seconds.\n6. Before returning back to the starting position.\n7. Repeat in the opposite direction for as many reps and sets desired."),
         Exercise(1063L, "Cable Reverse Wood Chop", listOf(MuscleGroup.CORE), Equipment.CABLE, "1. Start by standing with your feet shoulder width apart and your knees slightly bent.\n2. Hold a low pulley cable at about knee level to one side of your body.\n3. Slowly bring the cable up in a diagonal direction.\n4. Raise the cable over your head and shoulders.\n5. Squeeze your oblique muscles.\n6. Return back to the starting position.\n7. Repeat for as many reps and sets as desired."),
         Exercise(1064L, "Medicine Ball Overhead Slam", listOf(MuscleGroup.CORE), Equipment.DUMBBELL, "1. Start by standing up straight with your feet shoulder width apart.\n2. Your arms behind your head holding a medicine ball.\n3. Raise the ball above your head fully extending your body and arms.\n4. With your force, slam the ball into the ground in front of you as hard as you can.\n5. Follow through.\n6. With the follow through receive the ball from the bounce up.\n7. Repeat for as many reps and sets as desired."),
+        Exercise(1226L, "Dead Hang", listOf(MuscleGroup.CORE), Equipment.BODYWEIGHT, "1. Find a pull-up bar or a sturdy overhead structure.\n2. Reach up and grip the bar with an overhand grip (palms facing away), hands about shoulder-width apart.\n3. Hang freely, letting your arms and shoulders fully extend.\n4. Keep your core engaged and avoid excessive swinging.\n5. Hold the position for the desired duration."),
         Exercise(1065L, "Downward Facing Dog", listOf(MuscleGroup.CORE), Equipment.BODYWEIGHT, "1. Begin this position on all fours.\n2. Your hands directly underneath your shoulders.\n3. Push up with your hips towards the ceiling whilst extending your legs back.\n4. Keep a straight line from your arms to through your spine.\n5. And your tailbone down through your legs.\n6. Hold this position for around 5 to 10 breaths.\n7. Return to the starting position and repeat."),
         Exercise(1066L, "Lateral Stretch", listOf(MuscleGroup.CORE), Equipment.BODYWEIGHT, "1. Start by standing up straight with your feet shoulder width apart.\n2. Knees slightly bent.\n3. Placing your right hand on your hip and the other placed behind your head.\n4. Slowly raise the left arm in a vertical line.\n5. Incline your torso to the right.\n6. Feeling a stretch and tension in your abdominals.\n7. Return back to the starting position and repeat for as many reps and sets desired."),
         Exercise(1067L, "Hanging Knee Raise Rotation", listOf(MuscleGroup.CORE), Equipment.OTHER, "1. Start by grabbing onto a hanging grip or pull up bar.\n2. With a comfortable distance between your hands and a strong grip.\n3. Then slowly lift your knees in towards your chest in a diagonal direction.\n4. Rotating your legs from side to side until you feel tension on your lower abs.\n5. Hold this position for a few seconds.\n6. Return back to the starting position and repeat for the desired reps and sets."),
@@ -241,7 +257,6 @@ object ExerciseRepository {
         Exercise(1223L, "Stability Ball Single-Leg Crunch", listOf(MuscleGroup.CORE), Equipment.EXERCISEBALL, "1. Begin by lying on an exercise ball.\n2. With the small of your back.\n3. Crossing your arms across your chest.\n4. And slowly lifting one leg off of the floor.\n5. As soon as you find your balance.\n6. Curl your torso up.\n7. And draw in your belly button towards your spine.\n8. Squeeze with your abdominals.\n9. And then slowly return back to the starting position.\n10. Repeating for as many reps and sets as possible."),
         Exercise(1224L, "Dumbbell Alternating Cobra (Stability Ball)", listOf(MuscleGroup.CORE), Equipment.DUMBBELL, "1. Start off by lying in a prone position.\n2. With a stability ball underneath your sternum.\n3. Keeping your legs straight behind you.\n4. And your arms at your sides.\n5. Squeeze with your glutes.\n6. Keep your feet straight.\n7. And lift your torso off of the ball in an elevated position.\n8. Extend your right arm backwards.\n9. While keeping the left arm in place.\n10. Return the right arm to the starting position.\n11. While the left arm extends backwards.\n12. Alternate arms for as many reps and sets as desired."),
         Exercise(1225L, "Stability Ball Side Bend", listOf(MuscleGroup.CORE), Equipment.EXERCISEBALL, "1. Lie on an exercise ball with the small of your back rested upon the top of the ball."),
-        Exercise(2004L, "Cable Rope Face Pull", listOf(MuscleGroup.BACK), Equipment.MACHINE, "1. Start by facing a high pulley cable machine with either a rope or dual handles connected to the machine.\n2. Grab onto the handles and pull the weight directly towards your face, using your shoulders, and separating your shoulders as you pull the weights back.\n3. Hold for a count then return back to the starting position."),
 
         // CARDIO
         Exercise(4001L, "Walking", listOf(MuscleGroup.CARDIO), Equipment.MACHINE, "No detailed instructions available"),
@@ -516,6 +531,9 @@ object ExerciseRepository {
         Exercise(8273L, "Dumbbell One-Arm Posterior Fly on Stability Ball", listOf(MuscleGroup.SHOULDERS), Equipment.DUMBBELL, "1. Start off sitting on a stability ball with both feet together, your chest close to your knees and arms hanging down in front with a dumbbell in one hand.\n2. While maintaining a flat back, lift the weight to shoulder height allowing the arm to bend slightly and hold for a count, as the other arm stays in front of you.\n3. Return back to the starting position and repeat for as many reps and sets desired."),
         Exercise(8276L, "Dumbbell Alternating Shoulder Press (Stability Ball)", listOf(MuscleGroup.SHOULDERS), Equipment.DUMBBELL, "1. Start off by sitting on top of a stability ball with your feet planted firmly on the floor in front of you, arms bent by your head at 90-degrees and dumbbells in each hand.\n2. Raise one of the dumbbells slightly and elevate them over your head completely keeping the other next to your head in position.\n3. Keep your arm straight at the top and hold motion for a count then return back to the starting position.\n4. When you return back down with the first weight, elevate up with the opposite arm and perform the same motion.\n5. Repeat for as many reps and sets as desired."),
         Exercise(8277L, "Dumbbell Seated Shoulder Raise (Stability Ball)", listOf(MuscleGroup.SHOULDERS), Equipment.DUMBBELL, "1. Start off by sitting on top of a stability ball with your feet planted firmly on the floor in front of you.\n2. Raise both dumbbells, keeping both arms straight, until dumbbells are parallel to the floor.\n3. Keep your arms straight at the top and hold movement for a count then return back to the starting position.\n4. Repeat for as many reps and sets as desired."),
+        Exercise(8278L, "Band External Rotation", listOf(MuscleGroup.SHOULDERS), Equipment.BANDS, "1. Anchor a resistance band at waist height.\n2. Stand sideways to the anchor point and hold the band with your far hand.\n3. Keep your elbow tucked against your side and bent at 90 degrees.\n4. Rotate your forearm outward away from your body.\n5. Control the band back to the starting position and repeat."),
+        Exercise(8279L, "Band Internal Rotation", listOf(MuscleGroup.SHOULDERS), Equipment.BANDS, "1. Anchor a resistance band at waist height.\n2. Stand sideways to the anchor point and hold the band with your near hand.\n3. Keep your elbow tucked against your side and bent at 90 degrees.\n4. Rotate your forearm inward towards your stomach.\n5. Control the band back to the starting position and repeat."),
+        Exercise(8280L, "Scapular Wall Slides", listOf(MuscleGroup.SHOULDERS), Equipment.BODYWEIGHT, "1. Stand with your back against a wall, heels a few inches away.\n2. Press your head, upper back, and glutes against the wall.\n3. Raise your arms to a 'W' position, with elbows and backs of hands touching the wall.\n4. Slowly slide your hands upward into a 'Y' position while maintaining contact with the wall.\n5. Slide back down to the 'W' position and repeat."),
 
         // TRICEPS
         Exercise(8300L, "Cable Tricep Pushdown (Rope)", listOf(MuscleGroup.TRICEPS), Equipment.CABLE, "1. Stand in front of a high pulley cable machine with a rope attachment.\n2. Grasp the rope with a neutral grip and pull your elbows down to your sides.\n3. Extend your arms downward by contracting your triceps.\n4. Hold for a count at the bottom, then slowly return to the starting position."),
@@ -611,7 +629,6 @@ object ExerciseRepository {
         Exercise(3002L, "Barbell Curl", listOf(MuscleGroup.BICEPS), Equipment.BARBELL, "1. Start off standing up straight with your feet shoulder-width apart, keeping your knees slightly bent and abs drawn in tight.\n2. Grab a barbell with a shoulder width underhand (palms up) grip.\n3. Slowly raise the bar towards your upper chest.\n4. Hold this position for a count and then return back to the starting position."),
         Exercise(3005L, "Cable Bicep Curl", listOf(MuscleGroup.BICEPS), Equipment.CABLE, "1. Start by attaching a short bar to a cable pulley at the bottom of the machine then stand with your feet shoulder width apart.\n2. Grab the bar with a close underhand grip, lower your arms down towards your thighs and then, by bending through your elbows, raise the bar up towards your upper chest."),
         Exercise(3006L, "Preacher Curl Machine", listOf(MuscleGroup.BICEPS), Equipment.MACHINE, "1. Start off by adjust the seat of the bench so your arms are level with the top of the bench and resting your forearms against the bench and extend them fully.\n2. Grasp the bar underhand (palms up) and pull it towards your head, isolating and squeezing the bicep muscle."),
-        Exercise(3007L, "EZ Bar Curl", listOf(MuscleGroup.BICEPS), Equipment.BARBELL, "1. Start by standing up straight with your feet shoulder-width apart and your knees slightly bend.\n2. Grab onto the barbell in front of you with an underhand (palms up) grip and lower the bar until it is up against your thighs.\n3. Making sure that you keep your elbows still, raise the bar slowly up towards your chest."),
         Exercise(3010L, "Dumbbell Alternating Hammer Curl", listOf(MuscleGroup.BICEPS), Equipment.DUMBBELL, "1.) Start off standing with your feet shoulder-width apart. 2.) Grab a dumbbell in each hand with your palms facing inward and extend your arms out at the sides of your body. 3.) While keeping your elbows locked in at your sides, slowly lift your left arm in an arc motion towards your left shoulder. 4.) Repeat the same steps with your right arm."),
         Exercise(3011L, "Dumbbell Incline Curl", listOf(MuscleGroup.BICEPS), Equipment.DUMBBELL, "1.) Start by taking an incline bench and adjusting it to a 45-degree incline angle. 2.) Once in position let your arms hang down at your sides and while keeping your elbows straight, raise the dumbbells up towards your head. 3.) In the top position, hold for a count and then return back to the starting position."),
         Exercise(3014L, "EZ Bar Curl", listOf(MuscleGroup.BICEPS), Equipment.EZCURLBAR, "1.) Start by standing up straight with your feet shoulder-width apart and your knees slightly bend. 2.) Grab onto the barbell in front of you with an underhand (palms up) grip and lower the bar until it is up against your thighs. 3.) Making sure that you keep your elbows still, raise the bar slowly up towards your chest."),
@@ -858,11 +875,11 @@ object ExerciseRepository {
         Exercise(23034L, "Single-Leg Donkey Calf Raise", listOf(MuscleGroup.LEGS), Equipment.BENCH, "1. Set up incline bench with balls of feet on step behind bench.\n2. Bend forward resting forearms on bench, extend one leg behind.\n3. Let heel drop toward floor as starting position.\n4. Raise heel highsqueezing calf, hold briefly.\n5. Return to starting position and repeat."),
         Exercise(23035L, "Stability Ball Calf Raise", listOf(MuscleGroup.LEGS), Equipment.EXERCISEBALL, "1. Rest chest on exercise ball against wall, dumbbells at sides.\n2. Walk feet backward extending legs behind you.\n3. Raise heels high off floor rolling ball up wall.\n4. Squeeze calves, hold briefly.\n5. Return to starting position and repeat."),
         Exercise(23036L, "Box Jump with Single-Leg Stabilization", listOf(MuscleGroup.LEGS), Equipment.BOX, "1. Stand on plyo box with arms at sides and feet together.\n2. Jump off platform and gently land on ball of foot.\n3. Hold landing position.\n4. Repeat landing on opposite leg."),
-		Exercise(23037L, "Smith Machine Single-Leg Calf Raise", listOf(MuscleGroup.LEGS), Equipment.SMITH, "1. Stand facing the Smith Machine in the standing calf raise position.\n2. Place one leg on a bench while keeping the other on the floor.\n3. Lower the heel of the raised foot toward the floor.\n4. Raise onto the balls of your foot and hold the top position for a moment.\n5. Lower slowly and repeat with the opposite leg."),
-		Exercise(23038L, "Band Seated Calf Stretch", listOf(MuscleGroup.LEGS), Equipment.BANDS, "1. Sit on the floor with legs extended in front of you.\n2. Loop a resistance band around one foot.\n3. Gently pull the foot back while keeping the knee straight.\n4. Feel the stretch in the calf muscle.\n5. Hold for 15-30 seconds.\n6. Switch to the other leg."),
-		Exercise(23039L, "Bench Calf Stretch", listOf(MuscleGroup.LEGS), Equipment.BENCH, "1. Stand facing a bench or wall.\n2. Place balls of both feet on the bench.\n3. Extend your hips forward keeping heels down.\n4. Keep back straight.\n5. Feel the stretch in calves and lower legs.\n6. Hold for 30 seconds.\n7. Slowly return to starting position."),
-		Exercise(23040L, "Calf Stretch with Rope", listOf(MuscleGroup.LEGS), Equipment.CABLE, "1. Attach a rope to a low cable pulley.\n2. Stand facing the machine with the rope around both feet.\n3. Lean backward gently while keeping heels on the floor.\n4. Feel the stretch in the calves.\n5. Hold for 15-30 seconds.\n6. Return to starting position."),
-		Exercise(23041L, "Peroneal Stretch", listOf(MuscleGroup.LEGS), Equipment.BODYWEIGHT, "1. Sit cross-legged on the floor.\n2. Gently pull one foot across your body toward the opposite knee.\n3. Keep your leg relaxed and follow through with your hand.\n4. Feel the stretch in the outer leg and ankle area.\n5. Hold for 15-30 seconds.\n6. Switch to the other leg."),
+        Exercise(23037L, "Smith Machine Single-Leg Calf Raise", listOf(MuscleGroup.LEGS), Equipment.SMITH, "1. Stand facing the Smith Machine in the standing calf raise position.\n2. Place one leg on a bench while keeping the other on the floor.\n3. Lower the heel of the raised foot toward the floor.\n4. Raise onto the balls of your foot and hold the top position for a moment.\n5. Lower slowly and repeat with the opposite leg."),
+        Exercise(23038L, "Band Seated Calf Stretch", listOf(MuscleGroup.LEGS), Equipment.BANDS, "1. Sit on the floor with legs extended in front of you.\n2. Loop a resistance band around one foot.\n3. Gently pull the foot back while keeping the knee straight.\n4. Feel the stretch in the calf muscle.\n5. Hold for 15-30 seconds.\n6. Switch to the other leg."),
+        Exercise(23039L, "Bench Calf Stretch", listOf(MuscleGroup.LEGS), Equipment.BENCH, "1. Stand facing a bench or wall.\n2. Place balls of both feet on the bench.\n3. Extend your hips forward keeping heels down.\n4. Keep back straight.\n5. Feel the stretch in calves and lower legs.\n6. Hold for 30 seconds.\n7. Slowly return to starting position."),
+        Exercise(23040L, "Calf Stretch with Rope", listOf(MuscleGroup.LEGS), Equipment.CABLE, "1. Attach a rope to a low cable pulley.\n2. Stand facing the machine with the rope around both feet.\n3. Lean backward gently while keeping heels on the floor.\n4. Feel the stretch in the calves.\n5. Hold for 15-30 seconds.\n6. Return to starting position."),
+        Exercise(23041L, "Peroneal Stretch", listOf(MuscleGroup.LEGS), Equipment.BODYWEIGHT, "1. Sit cross-legged on the floor.\n2. Gently pull one foot across your body toward the opposite knee.\n3. Keep your leg relaxed and follow through with your hand.\n4. Feel the stretch in the outer leg and ankle area.\n5. Hold for 15-30 seconds.\n6. Switch to the other leg."),
 
         // BACK
         Exercise(21001L, "Cable Lat Pulldown (Wide Grip)", listOf(MuscleGroup.BACK), Equipment.MACHINE, "1. Start by sitting under a cable pull down machine that has a wide bar attachment and grab it with a wide overhand grip.\n2. While keeping your abs drawn in and back straight, pull down the bar to your upper chest.\n3. Hold for a count at the bottom position, squeeze your lats and then slowly return back to the starting position."),
@@ -1024,22 +1041,33 @@ object ExerciseRepository {
         Exercise(22045L, "Smith Machine Wrist Curl", listOf(MuscleGroup.FOREARMS), Equipment.SMITH, "1. Sit down at the end of a flat bench positioned behind a weighted smith machine, grabbing it with an underhand shoulder width grip.\n2. Keep your elbows at your side and slowly lower the weight below your legs, squeezing your forearms, and hold for a count.\n3. Return back to the starting position.\n4. Repeat for as many reps and sets as desired.")
     )
 
-    suspend fun searchExercises(query: String): List<Exercise> {
-        if (query.isBlank()) return emptyList()
-        val lowerQuery = query.lowercase()
-        val localExercises = exerciseDao?.getAllExercises()?.first() ?: emptyList()
-        return (exerciseDatabase + localExercises).filter {
-            it.name.lowercase().contains(lowerQuery) ||
-                    it.instructions?.lowercase()?.contains(lowerQuery) ?: false
-        }.distinctBy { it.id }
+    override fun filterByMuscleGroup(muscleGroup: MuscleGroup): Flow<List<Exercise>> {
+        return exerciseDao?.getFilteredExercises(muscleGroup = muscleGroup.name) ?: flowOf(
+            exerciseDatabase.filter { it.muscleGroups.contains(muscleGroup) }
+        )
     }
 
-    fun filterByMuscleGroup(muscleGroup: MuscleGroup): List<Exercise> {
-        return exerciseDatabase.filter { it.muscleGroups.contains(muscleGroup) }
+    override fun getAllExercises(): Flow<List<Exercise>> {
+        return exerciseDao?.getAllExercises() ?: flowOf(exerciseDatabase)
     }
 
-    suspend fun getExerciseById(id: Long): Exercise? {
+    override fun searchExercises(query: String): Flow<List<Exercise>> {
+        return exerciseDao?.getFilteredExercises(query = query) ?: flowOf(
+            exerciseDatabase.filter {
+                it.name.contains(query, ignoreCase = true) ||
+                        it.instructions?.contains(query, ignoreCase = true) == true
+            }
+        )
+    }
+
+    override suspend fun getExerciseById(id: Long): Exercise? {
         return exerciseDatabase.find { it.id == id } ?: exerciseDao?.getExerciseById(id)
+    }
+
+    override fun getExercisesByIds(ids: List<Long>): Flow<List<Exercise>> {
+        return exerciseDao?.getExercisesByIds(ids) ?: flowOf(
+            exerciseDatabase.filter { it.id in ids }
+        )
     }
 
     fun getExerciseNamesByIds(ids: List<Long>): Flow<List<String>> {
@@ -1050,7 +1078,15 @@ object ExerciseRepository {
         }
     }
 
-    suspend fun updateExercise(exercise: Exercise) {
+    override suspend fun insertExercise(exercise: Exercise) {
         exerciseDao?.insertExercise(exercise)
+    }
+
+    override suspend fun updateExercise(exercise: Exercise) {
+        exerciseDao?.updateExercise(exercise)
+    }
+
+    override suspend fun deleteExercise(exercise: Exercise) {
+        exerciseDao?.deleteExercise(exercise)
     }
 }

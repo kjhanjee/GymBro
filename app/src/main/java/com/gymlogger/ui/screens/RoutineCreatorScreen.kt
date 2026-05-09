@@ -619,9 +619,7 @@ fun ExerciseCardItem(
                             text = if (equipmentName.isNotEmpty()) "${routineExercise.exerciseName} ($equipmentName)" else routineExercise.exerciseName,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = Color.White,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            color = Color.White
                         )
                         Row(
                             verticalAlignment = Alignment.CenterVertically,

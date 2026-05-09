@@ -284,7 +284,8 @@ fun WorkoutTrackerScreen(
     }
 
     // Save in-progress workout to storage whenever the workout state changes
-    LaunchedEffect(exercises, secondsElapsed, workoutTitle) {
+    // Removed secondsElapsed from dependencies to avoid 1-per-second writes
+    LaunchedEffect(exercises, workoutTitle) {
         val inProgressExerciseStates = exercises.map { exerciseState ->
             InProgressExerciseState(
                 exerciseId = exerciseState.exercise.id,
@@ -307,7 +308,12 @@ fun WorkoutTrackerScreen(
             secondsElapsed = secondsElapsed,
             workoutTitle = workoutTitle
         )
-        RoutineRepository.saveInProgressWorkout(context, inProgressWorkout)
+        RoutineRepository.updateInProgressWorkout(context) { current ->
+            inProgressWorkout.copy(
+                startTimeMillis = current.startTimeMillis,
+                restEndTimeMillis = current.restEndTimeMillis
+            )
+        }
     }
 
     // Initialize from routine if provided - only if in-progress workout doesn't exist for this routine
@@ -315,6 +321,14 @@ fun WorkoutTrackerScreen(
         // Only populate from routine if exercises list is empty (starting new routine workout)
         // If exercises already exists from in-progress storage, we keep them
         if (routineId != null && exercises.isEmpty()) {
+            val inProgress = RoutineRepository.getInProgressWorkout(context)
+            if (inProgress != null && inProgress.startTimeMillis != null) {
+                // There is already a workout in progress (possibly from a different routine or same one)
+                // The earlier LaunchedEffect(Unit) already loaded it.
+                // We should probably NOT overwrite it with a new routine if it's already active.
+                return@LaunchedEffect
+            }
+
             val routine = RoutineRepository.getRoutineById(routineId)
             if (routine != null) {
                 workoutTitle = routine.name

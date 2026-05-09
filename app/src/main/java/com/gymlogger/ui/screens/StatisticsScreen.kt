@@ -250,19 +250,30 @@ fun ExerciseAveragesCard(
 
 @Composable
 fun NutritionalBreakdownSection(meals: List<Meal>) {
-    val today = Calendar.getInstance().apply {
+    val calendar = Calendar.getInstance().apply {
+        firstDayOfWeek = Calendar.MONDAY
+        set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
         set(Calendar.HOUR_OF_DAY, 0)
         set(Calendar.MINUTE, 0)
         set(Calendar.SECOND, 0)
         set(Calendar.MILLISECOND, 0)
-    }.timeInMillis
-
-    val todayMeals = meals.filter { it.date >= today }
+    }
+    val startOfWeek = calendar.timeInMillis
     
-    val totalCalories = todayMeals.sumOf { it.macros.calories.toDouble() }.toFloat()
-    val totalProtein = todayMeals.sumOf { it.macros.protein.toDouble() }.toFloat()
-    val totalCarbs = todayMeals.sumOf { it.macros.carbs.toDouble() }.toFloat()
-    val totalFats = todayMeals.sumOf { it.macros.fats.toDouble() }.toFloat()
+    calendar.add(Calendar.DAY_OF_YEAR, 7)
+    val endOfWeek = calendar.timeInMillis
+
+    val weekMeals = meals.filter { it.date in startOfWeek until endOfWeek }
+    
+    val totalCalories = weekMeals.sumOf { it.macros.calories.toDouble() }.toFloat()
+    val totalProtein = weekMeals.sumOf { it.macros.protein.toDouble() }.toFloat()
+    val totalCarbs = weekMeals.sumOf { it.macros.carbs.toDouble() }.toFloat()
+    val totalFats = weekMeals.sumOf { it.macros.fats.toDouble() }.toFloat()
+
+    val avgCalories = totalCalories / 7f
+    val avgProtein = totalProtein / 7f
+    val avgCarbs = totalCarbs / 7f
+    val avgFats = totalFats / 7f
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -270,63 +281,79 @@ fun NutritionalBreakdownSection(meals: List<Meal>) {
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                "Daily Nutrition",
+                "Weekly Average Nutrition",
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Bold
             )
             
+            Text(
+                "Daily average based on current week (Mon-Sun)",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color(0xFF8E8E93)
+            )
+            
             Spacer(modifier = Modifier.height(16.dp))
             
-            // Daily Totals
+            // Weekly Averages
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                MacroStatColumn("Calories", "${totalCalories.toInt()}", "kcal")
-                MacroStatColumn("Protein", "${totalProtein.toInt()}", "g")
-                MacroStatColumn("Carbs", "${totalCarbs.toInt()}", "g")
-                MacroStatColumn("Fats", "${totalFats.toInt()}", "g")
+                MacroStatColumn("Calories", "${avgCalories.toInt()}", "kcal")
+                MacroStatColumn("Protein", "${avgProtein.toInt()}", "g")
+                MacroStatColumn("Carbs", "${avgCarbs.toInt()}", "g")
+                MacroStatColumn("Fats", "${avgFats.toInt()}", "g")
             }
 
-            if (todayMeals.isNotEmpty()) {
+            if (weekMeals.isNotEmpty()) {
                 HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp), color = Color(0xFF2C2C2E))
                 
                 Text(
-                    "Meal Breakdown",
+                    "Avg. Daily Breakdown by Meal Type",
                     style = MaterialTheme.typography.labelMedium,
                     color = Color(0xFF8E8E93)
                 )
                 
                 Spacer(modifier = Modifier.height(8.dp))
                 
-                todayMeals.forEach { meal ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            meal.type.name.lowercase().replaceFirstChar { it.uppercase() },
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.White,
-                            modifier = Modifier.width(80.dp)
-                        )
-                        
-                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            SmallMacroText("${meal.macros.calories.toInt()} kcal")
-                            SmallMacroText("P: ${meal.macros.protein.toInt()}g")
-                            SmallMacroText("C: ${meal.macros.carbs.toInt()}g")
-                            SmallMacroText("F: ${meal.macros.fats.toInt()}g")
+                val mealTypeOrder = listOf(MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER, MealType.SNACK, MealType.PRE_WORKOUT)
+                
+                mealTypeOrder.forEach { type ->
+                    val mealsOfType = weekMeals.filter { it.type == type }
+                    if (mealsOfType.isNotEmpty()) {
+                        val typeCalories = mealsOfType.sumOf { it.macros.calories.toDouble() }.toFloat() / 7f
+                        val typeProtein = mealsOfType.sumOf { it.macros.protein.toDouble() }.toFloat() / 7f
+                        val typeCarbs = mealsOfType.sumOf { it.macros.carbs.toDouble() }.toFloat() / 7f
+                        val typeFats = mealsOfType.sumOf { it.macros.fats.toDouble() }.toFloat() / 7f
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                type.name.lowercase().replaceFirstChar { it.uppercase() },
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color.White,
+                                modifier = Modifier.width(80.dp)
+                            )
+                            
+                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                SmallMacroText("${typeCalories.toInt()} kcal")
+                                SmallMacroText("P: ${typeProtein.toInt()}g")
+                                SmallMacroText("C: ${typeCarbs.toInt()}g")
+                                SmallMacroText("F: ${typeFats.toInt()}g")
+                            }
                         }
                     }
                 }
             } else {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    "No meals logged today",
+                    "No meals logged this week",
                     style = MaterialTheme.typography.bodySmall,
                     color = Color(0xFF8E8E93),
                     textAlign = TextAlign.Center,

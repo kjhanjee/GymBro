@@ -13,6 +13,8 @@ import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -36,7 +38,12 @@ fun ExerciseDatabaseScreen(
     onNavigateBack: () -> Unit,
     onNavigateToDetail: (Long) -> Unit
 ) {
-    val exercises = remember { ExerciseRepository.exerciseDatabase }
+    var searchQuery by remember { mutableStateOf("") }
+    val exercises by if (searchQuery.isBlank()) {
+        ExerciseRepository.getAllExercises().collectAsState(initial = emptyList())
+    } else {
+        ExerciseRepository.searchExercises(searchQuery).collectAsState(initial = emptyList())
+    }
     val pagerState = rememberPagerState(pageCount = { MuscleGroup.entries.size })
     val scope = rememberCoroutineScope()
 
@@ -55,7 +62,10 @@ fun ExerciseDatabaseScreen(
                 .padding(padding)
         ) {
             // Search bar
-            ExerciseSearchBar()
+            ExerciseSearchBar(
+                query = searchQuery,
+                onQueryChange = { searchQuery = it }
+            )
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -85,12 +95,13 @@ fun ExerciseDatabaseScreen(
 }
 
 @Composable
-fun ExerciseSearchBar() {
-    var searchQuery by remember { mutableStateOf("") }
-
+fun ExerciseSearchBar(
+    query: String,
+    onQueryChange: (String) -> Unit
+) {
     TextField(
-        value = searchQuery,
-        onValueChange = { searchQuery = it },
+        value = query,
+        onValueChange = onQueryChange,
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
@@ -99,8 +110,8 @@ fun ExerciseSearchBar() {
             Icon(Icons.Default.Search, contentDescription = null, tint = Color(0xFF8E8E93))
         },
         trailingIcon = {
-            if (searchQuery.isNotBlank()) {
-                IconButton(onClick = { searchQuery = "" }) {
+            if (query.isNotBlank()) {
+                IconButton(onClick = { onQueryChange("") }) {
                     Icon(Icons.Default.Close, contentDescription = "Clear", tint = Color(0xFF8E8E93))
                 }
             }

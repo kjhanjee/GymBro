@@ -18,6 +18,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.gymlogger.service.WorkoutService
 import com.gymlogger.ui.components.WorkoutMiniCard
+import com.gymlogger.ui.screens.SettingsScreen
 import com.gymlogger.ui.screens.*
 
 @Composable
@@ -51,7 +52,14 @@ fun AppNavigation(
                     onNavigateToSettings = { navController.navigate("settings") },
                     onNavigateToMealLogger = { navController.navigate("mealLogger") },
                     onNavigateToDietOptimizer = { navController.navigate("dietOptimizer") },
-                    onNavigateToWorkoutOptimizer = { navController.navigate("workoutOptimizer") }
+                    onNavigateToWorkoutOptimizer = { navController.navigate("workoutOptimizer") },
+                    onNavigateToAiTrainer = { navController.navigate("aiTrainer") }
+                )
+            }
+
+            composable("aiTrainer") {
+                AiTrainerChatScreen(
+                    onNavigateBack = { navController.popBackStack() }
                 )
             }
 

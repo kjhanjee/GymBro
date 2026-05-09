@@ -1,5 +1,6 @@
 package com.gymlogger
 
+import android.util.Log
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -8,6 +9,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -25,31 +27,53 @@ import com.gymlogger.data.ExerciseRepository
 import com.gymlogger.data.MealRepository
 import com.gymlogger.data.RoutineRepository
 import com.gymlogger.data.SettingsRepository
+import com.gymlogger.service.WorkoutService
 import com.gymlogger.ui.navigation.AppNavigation
 import com.gymlogger.ui.theme.GymBroTheme
+import android.content.Intent
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Log.d("MainActivity", "onCreate called, savedInstanceState is null: ${savedInstanceState == null}")
         enableEdgeToEdge()
         setContent {
             val context = LocalContext.current
             val themeHue by SettingsRepository.activeThemeHue.collectAsState()
             val downloadProgress by MacroCalculator.downloadProgress.collectAsState()
+            val isAiReady by MacroCalculator.isReady.collectAsState()
             
-            var isInitialized by remember { mutableStateOf(false) }
+            var isInitialized by rememberSaveable { mutableStateOf(false) }
 
             LaunchedEffect(Unit) {
+                Log.d("MainActivity", "LaunchedEffect(Unit) triggered, isInitialized: $isInitialized, isAiReady: $isAiReady")
                 SettingsRepository.init(context)
                 ExerciseRepository.init(context)
                 RoutineRepository.init(context)
                 MealRepository.init(context)
-                
+
+                // Check for in-progress workout and start service if needed
                 launch {
-                    MacroCalculator.prepareModel(context)
-                    MacroCalculator.init(context)
-                    isInitialized = true
+                    val inProgress = RoutineRepository.getInProgressWorkout(context)
+                    if (inProgress != null && (inProgress.startTimeMillis != null || inProgress.exerciseStates.isNotEmpty())) {
+                        Log.d("MainActivity", "Starting WorkoutService to restore in-progress workout")
+                        val intent = Intent(context, WorkoutService::class.java).apply {
+                            action = WorkoutService.ACTION_RESTORE_WORKOUT
+                        }
+                        context.startService(intent)
+                    }
+                }
+                
+                if (!isInitialized || !isAiReady) {
+                    launch {
+                        MacroCalculator.prepareModel(context)
+                        MacroCalculator.init(context)
+                        isInitialized = true
+                        Log.d("MainActivity", "Initialization complete")
+                    }
+                } else {
+                    Log.d("MainActivity", "Already initialized and AI ready")
                 }
             }
 
@@ -64,13 +88,7 @@ class MainActivity : ComponentActivity() {
                 }
 
                 Surface(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .pointerInput(Unit) {
-                            detectTapGestures(onTap = {
-                                focusManager.clearFocus()
-                            })
-                        },
+                    modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {

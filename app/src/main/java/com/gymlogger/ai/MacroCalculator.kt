@@ -5,13 +5,15 @@ import android.content.Context
 import android.util.Log
 import com.google.ai.edge.litertlm.Backend
 import com.google.ai.edge.litertlm.Content
+import com.google.ai.edge.litertlm.Contents
+import com.google.ai.edge.litertlm.ConversationConfig
 import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
+import com.google.ai.edge.litertlm.SamplerConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asCoroutineDispatcher
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
@@ -104,7 +106,8 @@ object MacroCalculator {
                 val gpuConfig = EngineConfig(
                     modelPath = outFile.absolutePath,
                     backend = Backend.GPU(),
-                    cacheDir = appContext.cacheDir.path
+                    cacheDir = appContext.cacheDir.path,
+                    maxNumTokens = 128000
                 )
                 val newEngine = Engine(gpuConfig)
                 newEngine.initialize()
@@ -116,7 +119,8 @@ object MacroCalculator {
                 val cpuConfig = EngineConfig(
                     modelPath = outFile.absolutePath,
                     backend = Backend.CPU(),
-                    cacheDir = appContext.cacheDir.path
+                    cacheDir = appContext.cacheDir.path,
+                    maxNumTokens = 128000
                 )
                 val newEngine = Engine(cpuConfig)
                 newEngine.initialize()
@@ -142,13 +146,153 @@ object MacroCalculator {
 
         try {
             Log.d(TAG, "Generating response for prompt on thread: ${Thread.currentThread().name}")
-            val conversation = currentEngine.createConversation()
-            val response = conversation.sendMessage(prompt)
+            val conversationConfig = ConversationConfig(
+                samplerConfig = SamplerConfig(topK = 64, topP = 0.95, temperature = 1.0)
+            )
+            val conversation = currentEngine.createConversation(conversationConfig)
+            val extraContext = mapOf("max_tokens" to 128000)
+            val response = conversation.sendMessage(prompt, extraContext)
             val fullResponse = (response.contents.contents.firstOrNull() as? Content.Text)?.text ?: ""
             conversation.close()
             fullResponse
         } catch (e: Exception) {
             Log.e(TAG, "Inference failed", e)
+            null
+        }
+    }
+
+    fun generateResponseStream(prompt: String): Flow<String> = callbackFlow {
+        val currentEngine = engine
+        if (currentEngine == null) {
+            close(IllegalStateException("Engine not initialized"))
+            return@callbackFlow
+        }
+        val conversationConfig = ConversationConfig(
+            samplerConfig = SamplerConfig(topK = 64, topP = 0.95, temperature = 1.0)
+        )
+        val conversation = currentEngine.createConversation(conversationConfig)
+        try {
+            var lastText = ""
+            val extraContext = mapOf(
+                "max_tokens" to 128000,
+                "max_output_tokens" to 128000
+            )
+            conversation.sendMessageAsync(prompt, object : com.google.ai.edge.litertlm.MessageCallback {
+                override fun onMessage(message: com.google.ai.edge.litertlm.Message) {
+                    val fullText = (message.contents.contents.firstOrNull() as? Content.Text)?.text ?: ""
+                    val delta = if (fullText.startsWith(lastText)) {
+                        fullText.substring(lastText.length)
+                    } else {
+                        fullText
+                    }
+                    if (delta.isNotEmpty()) {
+                        trySend(delta)
+                        lastText = fullText
+                    }
+                }
+
+                override fun onDone() {
+                    close()
+                }
+
+                override fun onError(throwable: Throwable) {
+                    close(throwable)
+                }
+            }, extraContext)
+        } catch (e: Exception) {
+            close(e)
+        }
+
+        awaitClose {
+            conversation.close()
+        }
+    }.flowOn(aiExecutor)
+
+    private var chatConversation: com.google.ai.edge.litertlm.Conversation? = null
+
+    fun startChat() {
+        chatConversation?.close()
+        chatConversation = null
+        Log.d(TAG, "Chat conversation reset")
+    }
+
+    fun sendChatMessageStream(prompt: String): Flow<String> = callbackFlow {
+        val currentEngine = engine
+        if (currentEngine == null) {
+            close(IllegalStateException("Engine not initialized"))
+            return@callbackFlow
+        }
+        
+        if (chatConversation == null) {
+            val conversationConfig = ConversationConfig(
+                samplerConfig = SamplerConfig(topK = 64, topP = 0.95, temperature = 1.0)
+            )
+            chatConversation = currentEngine.createConversation(conversationConfig)
+        }
+        val conversation = chatConversation!!
+        
+        try {
+            var lastText = ""
+            val extraContext = mapOf(
+                "max_tokens" to 128000,
+                "max_output_tokens" to 128000
+            )
+            conversation.sendMessageAsync(prompt, object : com.google.ai.edge.litertlm.MessageCallback {
+                override fun onMessage(message: com.google.ai.edge.litertlm.Message) {
+                    val fullText = (message.contents.contents.firstOrNull() as? Content.Text)?.text ?: ""
+                    val delta = if (fullText.startsWith(lastText)) {
+                        fullText.substring(lastText.length)
+                    } else {
+                        fullText
+                    }
+                    if (delta.isNotEmpty()) {
+                        trySend(delta)
+                        lastText = fullText
+                    }
+                }
+
+                override fun onDone() {
+                    close()
+                }
+
+                override fun onError(throwable: Throwable) {
+                    close(throwable)
+                }
+            }, extraContext)
+        } catch (e: Exception) {
+            close(e)
+        }
+
+        awaitClose {
+            // Do not close the conversation here to maintain state
+        }
+    }.flowOn(aiExecutor)
+
+    suspend fun summarizeMessages(conversationText: String): String? = withContext(aiExecutor) {
+        val currentEngine = engine ?: return@withContext null
+        val prompt = """
+            <|turn>system
+            Summarize the following conversation between a user and an AI Gym Instructor. 
+            Be concise and capture the key points, progress, and agreed-upon plans.
+            <turn|>
+            <|turn>user
+            $conversationText
+            <turn|>
+            <|turn>model
+        """.trimIndent()
+
+        try {
+            val conversationConfig = ConversationConfig(
+                samplerConfig = SamplerConfig(topK = 64, topP = 0.95, temperature = 1.0)
+            )
+            val conversation = currentEngine.createConversation(conversationConfig)
+            val extraContext = mapOf("max_tokens" to 128000)
+            val response = conversation.sendMessage(prompt, extraContext)
+            val summary = (response.contents.contents.firstOrNull() as? Content.Text)?.text ?: ""
+            conversation.close()
+            summary
+        } catch (e: Exception) {
+            Log.e(TAG, "Summarization failed", e)
             null
         }
     }

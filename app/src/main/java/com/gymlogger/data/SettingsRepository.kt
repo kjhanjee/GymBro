@@ -17,6 +17,12 @@ object SettingsRepository {
     private val WEIGHT_UNIT = stringPreferencesKey("weight_unit")
     private val TIMER_UNIT = stringPreferencesKey("timer_unit")
     private val THEME_HUE = floatPreferencesKey("theme_hue")
+    private val HEIGHT_CM = floatPreferencesKey("height_cm")
+    private val WEIGHT_KG = floatPreferencesKey("weight_kg")
+    private val GENDER = stringPreferencesKey("gender")
+    private val TARGET_WEIGHT_KG = floatPreferencesKey("target_weight_kg")
+    private val GOAL = stringPreferencesKey("goal")
+    private val TRAINING_CONTEXT_KEY = stringPreferencesKey("weekly_schedule")
 
     private val _activeThemeHue = MutableStateFlow(210f)
     val activeThemeHue: StateFlow<Float> = _activeThemeHue.asStateFlow()
@@ -64,5 +70,28 @@ object SettingsRepository {
             preferences[THEME_HUE] = hue
         }
         _activeThemeHue.value = hue
+    }
+
+    // Physique & Goals
+    fun getHeight(context: Context): Flow<Float> = context.dataStore.data.map { it[HEIGHT_CM] ?: 170f }
+    suspend fun setHeight(context: Context, height: Float) { context.dataStore.edit { it[HEIGHT_CM] = height } }
+
+    fun getWeight(context: Context): Flow<Float> = context.dataStore.data.map { it[WEIGHT_KG] ?: 70f }
+    suspend fun setWeight(context: Context, weight: Float) { context.dataStore.edit { it[WEIGHT_KG] = weight } }
+
+    fun getGender(context: Context): Flow<String> = context.dataStore.data.map { it[GENDER] ?: "Male" }
+    suspend fun setGender(context: Context, gender: String) { context.dataStore.edit { it[GENDER] = gender } }
+
+    fun getTargetWeight(context: Context): Flow<Float> = context.dataStore.data.map { it[TARGET_WEIGHT_KG] ?: 70f }
+    suspend fun setTargetWeight(context: Context, weight: Float) { context.dataStore.edit { it[TARGET_WEIGHT_KG] = weight } }
+
+    fun getGoal(context: Context): Flow<String> = context.dataStore.data.map { it[GOAL] ?: "Body Recomposition" }
+    suspend fun setGoal(context: Context, goal: String) { context.dataStore.edit { it[GOAL] = goal } }
+
+    fun getTrainingContext(context: Context): Flow<List<String>> = context.dataStore.data.map { 
+        it[TRAINING_CONTEXT_KEY]?.split(",")?.filter { s -> s.isNotBlank() } ?: emptyList() 
+    }
+    suspend fun setTrainingContext(context: Context, schedule: List<String>) {
+        context.dataStore.edit { it[TRAINING_CONTEXT_KEY] = schedule.joinToString(",") }
     }
 }

@@ -247,50 +247,87 @@ fun WorkoutOptimizerScreen(onNavigateBack: () -> Unit) {
                             isLoading = true
                             errorMessage = null
                             
-                            val workouts = RoutineRepository.getCompletedWorkouts().first()
-                            val availableExercises = ExerciseRepository.filterByMuscleGroup(targetBodyPart)
-                                .joinToString(", ") { it.name }
+                            val weightUnit = SettingsRepository.getWeightUnit(context).first()
+                            val unit = weightUnit.name.lowercase()
+                            val scheduleNames = SettingsRepository.getTrainingContext(context).first()
+                            val allRoutines = RoutineRepository.getRoutines().first()
+                            val scheduledRoutines = allRoutines.filter { it.name in scheduleNames }
 
-                            val relevantStats = workouts.flatMap { it.sets }
-                                .filter { it.isCompleted }
-                                .groupBy { it.exerciseName }
-                                .map { (name, sets) ->
-                                    val avgWeight = sets.mapNotNull { it.weight }.average()
-                                    "$name: Avg ${"%.1f".format(avgWeight)}${weightUnit.name.lowercase()}"
+                            val currentSchedule = if (scheduledRoutines.isEmpty()) {
+                                "No routines scheduled."
+                            } else {
+                                scheduledRoutines.joinToString("\n") { routine ->
+                                    val exerciseDetails = routine.exercises.joinToString("\n") { exercise ->
+                                        val setsDetails = exercise.sets.joinToString(", ") { set ->
+                                            val w = set.targetWeight?.toString() ?: "?"
+                                            val r = set.targetReps?.toString() ?: "?"
+                                            val rir = set.targetRir?.toString() ?: "?"
+                                            "$w$unit x $r @ RIR $rir"
+                                        }
+                                        "  * ${exercise.exerciseName}: $setsDetails"
+                                    }
+                                    "- ${routine.name}:\n$exerciseDetails"
+                                }
+                            }
+
+                            val workouts = RoutineRepository.getCompletedWorkouts().first().sortedByDescending { it.date }
+                            val availableExercises = ExerciseRepository.filterByMuscleGroup(targetBodyPart).first()
+                                .joinToString(", ") { "${it.name} (Equipment: ${it.equipment})" }
+
+                            val relevantStats = workouts.flatMap { workout ->
+                                workout.sets.filter { it.isCompleted }.map { it to workout.date }
+                            }
+                                .groupBy { it.first.exerciseName }
+                                .map { (name, setPairs) ->
+                                    val sets = setPairs.map { it.first }
+                                    val maxWeight = sets.mapNotNull { it.weight }.maxOrNull() ?: 0f
+                                    val latestDate = setPairs.maxOf { it.second }
+                                    val recentSets = setPairs.filter { it.second == latestDate }.map { it.first }
+                                    val recentAvgWeight = recentSets.mapNotNull { it.weight }.average()
+                                    val recentAvgReps = recentSets.mapNotNull { it.reps }.average()
+                                    "$name: Max ${"%.1f".format(maxWeight)}$unit | Last Session: ${"%.1f".format(recentAvgWeight)}$unit x ${"%.1f".format(recentAvgReps)} reps"
                                 }.joinToString("\n")
 
                             val prompt = """
-                                System: You are an expert Strength Coach. Create an optimized workout routine.
-                                Based on the user's history and goals, suggest specific exercises from the database.
-                                CRITICAL: Return ONLY a valid JSON object. No conversational text, no markdown code blocks.
+                                System: You are "GymBro AI", a world-class Strength and Conditioning Coach.
+                                Your mission is to design a high-performance workout routine tailored to the user's specific goals and equipment.
                                 
-                                JSON Structure to follow:
+                                CONTEXT:
+                                - Target Muscle Group: ${targetBodyPart.name}
+                                - Training Goal: $trainingGoal
+                                - Preferred Unit: ${weightUnit.name}
+                                - Available Exercises in Database: $availableExercises
+                                
+                                USER HISTORY & PROGRESS:
+                                $relevantStats
+                                
+                                CURRENT WEEKLY SCHEDULE (For context):
+                                $currentSchedule
+
+                                INSTRUCTIONS:
+                                1. Select exactly $numExercises exercises from the "Available Exercises" list that best fit the Goal.
+                                2. For each exercise, prescribe a detailed set/rep/weight/RIR scheme.
+                                3. Progressively overload: If the user has history for an exercise, suggest weights slightly higher than their "Last Session" or "Max" if appropriate for the goal.
+                                4. Set Types: Use 'WARMUP' for the first set if it's a heavy compound. Use 'NORMAL' generally. Use 'FAILURE' or 'DROP_SET' for high intensity.
+                                5. RIR (Reps In Reserve): 0-1 for Strength/Failure, 1-3 for Hypertrophy.
+                                
+                                OUTPUT FORMAT:
+                                Return ONLY a valid JSON object. No markdown, no extra text.
                                 {
-                                  "routineName": "string",
-                                  "description": "string",
+                                  "routineName": "Creative name for the workout",
+                                  "description": "Short explanation of the strategy",
                                   "exercises": [
                                     {
-                                      "exerciseName": "string (MUST match database name if possible)",
-                                      "equipment": "string",
+                                      "exerciseName": "Exact name from available list",
+                                      "equipment": "Equipment type",
                                       "sets": [
-                                        { "type": "NORMAL" | "WARMUP" | "FAILURE" | "DROP_SET", "reps": number, "weight": number, "rir": number }
+                                        { "type": "NORMAL", "reps": "10", "weight": 60.0, "rir": 2 }
                                       ]
                                     }
                                   ]
                                 }
                                 
-                                IMPORTANT: "reps" MUST be an integer. Even for AMRAP, please provide a high number like 20.
-                                All weights should be in ${weightUnit.name}.
-                                ${if (trainingGoal == "Failure Build") "SPECIAL INSTRUCTION: For 'Failure Build' goal, ensure at least one set per exercise is of type 'FAILURE' with rir = 0." else ""}
-
-                                User Details:
-                                Body Part: ${targetBodyPart.name}
-                                Goal: $trainingGoal
-                                Number of Exercises: $numExercises
-                                Preferred Weight Unit: ${weightUnit.name}
-                                Available Exercises for this Body Part: $availableExercises
-                                User's Average Strength Stats:
-                                $relevantStats
+                                CRITICAL: "reps" must be a STRING. "weight" must be a FLOAT. "rir" must be an INTEGER or null.
                             """.trimIndent()
 
                             val response = MacroCalculator.generateResponse(prompt)
@@ -356,19 +393,27 @@ fun WorkoutOptimizerScreen(onNavigateBack: () -> Unit) {
                                             Routine.RoutineExercise.SetConfig(
                                                 id = sIndex.toLong() + 1,
                                                 type = try { WorkoutSet.SetType.valueOf(optSet.type) } catch(e: Exception) { WorkoutSet.SetType.NORMAL },
-                                                targetReps = optSet.reps.toIntOrNull() ?: 10,
+                                                targetReps = optSet.reps.toIntOrNull() ?: optSet.reps.filter { it.isDigit() }.toIntOrNull() ?: 10,
                                                 targetWeight = optSet.weight,
                                                 targetRir = optSet.rir,
-                                                restTime = 2
+                                                restTime = when(trainingGoal) {
+                                                    "Strength" -> 180
+                                                    "Hypertrophy" -> 90
+                                                    "Endurance" -> 60
+                                                    else -> 90
+                                                },
+                                                completedSets = emptyList()
                                             )
-                                        }
+                                        },
+                                        inputType = WorkoutSet.InputType.REPS
                                     )
                                 }
                                 val newRoutine = Routine(
                                     id = 0,
                                     name = workout.routineName,
                                     exercises = routineExercises,
-                                    description = workout.description
+                                    description = workout.description,
+                                    createdAt = System.currentTimeMillis()
                                 )
                                 RoutineRepository.createRoutine(context, newRoutine)
                                 onNavigateBack()

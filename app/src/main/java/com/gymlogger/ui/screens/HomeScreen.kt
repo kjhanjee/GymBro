@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -43,7 +44,8 @@ fun HomeScreenPreview() {
             onNavigateToSettings = {},
             onNavigateToMealLogger = {},
             onNavigateToDietOptimizer = {},
-            onNavigateToWorkoutOptimizer = {}
+            onNavigateToWorkoutOptimizer = {},
+            onNavigateToAiTrainer = {}
         )
     }
 }
@@ -59,7 +61,8 @@ fun HomeScreen(
     onNavigateToSettings: () -> Unit,
     onNavigateToMealLogger: () -> Unit,
     onNavigateToDietOptimizer: () -> Unit,
-    onNavigateToWorkoutOptimizer: () -> Unit
+    onNavigateToWorkoutOptimizer: () -> Unit,
+    onNavigateToAiTrainer: () -> Unit
 ) {
     val routines by com.gymlogger.data.RoutineRepository.getRoutines().collectAsState(initial = emptyList())
     val coroutineScope = rememberCoroutineScope()
@@ -165,6 +168,7 @@ fun HomeScreen(
                         QuickActionItem("Statistics", Icons.Default.BarChart, onNavigateToStatistics),
                         QuickActionItem("Meal Logger", Icons.Default.Restaurant, onNavigateToMealLogger),
                         QuickActionItem("Diet Optimizer", Icons.Default.AutoAwesome) { onNavigateToDietOptimizer() },
+                        QuickActionItem("AI Trainer", Icons.AutoMirrored.Filled.Chat) { onNavigateToAiTrainer() },
                         QuickActionItem("Workout Optimizer", Icons.Default.FitnessCenter) { onNavigateToWorkoutOptimizer() },
                         QuickActionItem("Recent Workouts", Icons.Default.History, onNavigateToRecentWorkouts),
                         QuickActionItem("Exercise Library", Icons.Default.Folder, onNavigateToExercises)
