@@ -2,8 +2,6 @@
 
 All notable changes to GymLogger.
 
-## [Unreleased]
-
 ### AI Trainer & Personalization (May 9, 2026)
 
 **New Features:**
