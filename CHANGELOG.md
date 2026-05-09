@@ -4,6 +4,28 @@ All notable changes to GymLogger.
 
 ## [Unreleased]
 
+### AI Trainer & Personalization (May 9, 2026)
+
+**New Features:**
+- **AI Trainer Chat**: Introduced an interactive AI trainer powered by LiteRT (Gemma-4-E2B) for personalized workout advice and macro calculations.
+- **Settings Persistence**: Implemented `SettingsRepository` using DataStore for persisting user preferences, physique (height, weight), and fitness goals.
+
+**Improvements:**
+- **Enhanced Macro Calculator**: Significantly improved the AI-driven macro calculation logic and prompt engineering for more accurate nutritional guidance.
+- **UI/UX Refinements**:
+    - Set `MainActivity` to `singleTask` launch mode for improved stability.
+    - Added `configChanges` handling for smoother orientation and screen size transitions.
+    - Updated `MealLoggerScreen` with improved state management for better performance.
+    - Refined `SettingsScreen` with a new "Physique & Goals" section.
+
+**Bug Fixes:**
+- **Timer Fixes**: Resolved issues with workout timers in `WorkoutService` to ensure consistent tracking across app restarts.
+- **UI Consistency**: Fixed layout issues in `ExerciseDatabaseScreen` and `HomeScreen`.
+
+**Data Layer:**
+- Updated `ExerciseRepository` and `RoutineRepository` with improved data access patterns.
+- Added `IExerciseRepository` interface for better testability and abstraction.
+
 ### Bug Fixes and Feature Updates (Apr 26, 2026)
 
 **Workout Persistence Fix:**

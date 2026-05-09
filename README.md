@@ -4,6 +4,11 @@ GymBro is a modern, personal fitness tracking application built with Jetpack Com
 
 ## Latest Developments & Improvements
 
+### AI Trainer & Personalization
+- **AI Trainer Chat**: Integrated a sophisticated AI Chat interface powered by Google's LiteRT (formerly TensorFlow Lite). Users can interact with an AI trainer to get personalized workout advice, form tips, and nutrition guidance.
+- **Enhanced Macro Calculator**: Leverages the local AI model to provide precise macronutrient targets based on user-specific physique and fitness goals.
+- **Settings & Goals Persistence**: Added a robust settings management system using Jetpack DataStore to persist user preferences (units, themes) and personal metrics (height, weight, target weight, fitness goals).
+
 ### Data Layer Refactoring
 - **Room Database Migration**: Completed migration from DataStore to a robust Room database with new DAOs (`ExerciseDao.kt`), converters, and entity definitions. This provides improved data integrity, complex querying, and faster performance.
 - **New Workout Service**: Implemented comprehensive background workout tracking service with foreground service support for uninterrupted logging sessions.
@@ -31,6 +36,8 @@ GymBro is a modern, personal fitness tracking application built with Jetpack Com
 ## Features
 
 ### Core Functionality
+- **AI Trainer Chat**: Real-time personalized coaching and nutritional advice.
+- **Personalized Settings & Goals**: Track your physique and set clear targets for your fitness journey.
 - **Massive Exercise Database**: Over **1,000 exercises** categorized by muscle groups (Chest, Back, Shoulders, Legs, Arms, Core, etc.).
 - **Custom Routine Creator**: Build and save personalized workout plans with ease.
 - **Precision Workout Tracking**:
@@ -86,11 +93,12 @@ The "Workout Optimizer" and "Macro Calculator" features require a LiteRT (Tensor
 app/
 ├── src/main/
 │   ├── java/com/gymlogger/
-│   │   ├── data/          # Room DB, DAOs, Repositories, Converters
+│   │   ├── data/          # Room DB, DAOs, Repositories, Converters, Settings
 │   │   │   ├── AppDatabase.kt    # Room database definition
 │   │   │   ├── ExerciseDao.kt    # Exercise database access
 │   │   │   ├── ExerciseRepository.kt
 │   │   │   ├── RoutineRepository.kt
+│   │   │   ├── SettingsRepository.kt # User preferences & goals DataStore
 │   │   │   ├── Converters.kt     # Room type converters
 │   │   │   └── WorkoutService.kt  # Background workout tracking
 │   │   ├── model/         # Data entities (Exercise, Routine, Workout)
