@@ -13,7 +13,9 @@ GymBro is a modern, personal fitness tracking application built with Jetpack Com
 - **Improved Timer Sync**: Better coordination between the UI and `WorkoutService` for accurate rest timers and total duration tracking.
 
 ### AI Enhancements
+- **Gemma 2B Model**: Integrated the powerful Gemma 2B model for high-precision nutritional analysis and more natural trainer interactions.
 - **Streaming Chat**: Experience instant feedback with streaming AI responses in the Trainer Chat interface.
+- **Micronutrient Intelligence**: The AI now analyzes meals for key micros including Fibre, Sugar, Vit B, Vit D, and Omega-3.
 - **Hardware Acceleration**: Optimized LiteRT (formerly TensorFlow Lite) integration with GPU acceleration support for faster inference and lower battery consumption.
 - **Intelligent Resource Management**: The AI engine now automatically releases resources when the app is in the background or when the device is under high memory pressure, ensuring system stability.
 
@@ -27,6 +29,10 @@ GymBro is a modern, personal fitness tracking application built with Jetpack Com
 
 ### Core Functionality
 - **AI Trainer Chat**: Real-time personalized coaching and nutritional advice.
+- **Nutritional Deep-Dive**: 
+  - Track **Macros** (Calories, Protein, Carbs, Fats).
+  - Track **Micros** (Fibre, Refined Sugar, Vitamin B, Vitamin D, Omega-3).
+  - **Custom Food Labels**: Define custom nutrition facts for specific items to ensure 100% accuracy in your logs.
 - **Personalized Settings & Goals**: Track your physique and set clear targets for your fitness journey.
 - **Massive Exercise Database**: Over **1,000 exercises** categorized by muscle groups (Chest, Back, Shoulders, Legs, Arms, Core, etc.).
 - **Custom Routine Creator**: Build and save personalized workout plans with ease.

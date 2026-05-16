@@ -12,12 +12,18 @@ All notable changes to GymLogger.
 - **Unified Sync**: Seamless synchronization of workout stats and timers with `WorkoutService`.
 
 **AI Subsystem:**
+- **Gemma 2B Model**: Upgraded the AI engine to Gemma 2B for significantly more precise nutritional analysis and conversational capabilities.
+- **Micronutrient Estimation**: The AI can now estimate key micronutrients (Fibre, Sugar, Vit B, Vit D, Omega) from meal descriptions.
 - **Streaming Responses**: Enabled real-time text generation in AI Trainer Chat for a more responsive experience.
 - **GPU Acceleration**: Enhanced LiteRT initialization to prioritize GPU usage with automatic CPU fallback.
 - **Auto-Resource Management**: 
     - Implemented a 5-minute background auto-release timer for the AI engine.
     - Added high memory pressure detection to proactively release AI resources.
 - **Conversation Summarization**: Added capability to generate concise summaries of chat history with the AI Trainer.
+
+**Nutritional Tracking & Data:**
+- **Micronutrient Support**: Added comprehensive tracking for Fibre, Refined Sugar, Vitamin B, Vitamin D, and Omega-3 across the app.
+- **Custom Food Labels**: Introduced a dedicated repository and UI for defining custom nutrition facts for specific items, which are used to ground AI macro/micro calculations.
 
 **Platform & UI/UX:**
 - **App Lifecycle Tracking**: Integrated `ProcessLifecycleOwner` to optimize resource usage based on app visibility.
