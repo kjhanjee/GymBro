@@ -20,6 +20,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gymlogger.ai.MacroCalculator
 import com.gymlogger.data.ExerciseRepository
 import com.gymlogger.data.RoutineRepository
@@ -71,8 +72,8 @@ data class OptimizedSet(
 fun WorkoutOptimizerScreen(onNavigateBack: () -> Unit) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    val isAiReady by MacroCalculator.isReady.collectAsState()
-    val weightUnit by SettingsRepository.getWeightUnit(context).collectAsState(initial = SettingsRepository.WeightUnit.KG)
+    val isAiReady by MacroCalculator.isReady.collectAsStateWithLifecycle()
+    val weightUnit by SettingsRepository.getWeightUnit(context).collectAsStateWithLifecycle(initialValue = SettingsRepository.WeightUnit.KG)
 
     var targetBodyPart by remember { mutableStateOf(MuscleGroup.CHEST) }
     var numExercises by remember { mutableStateOf("4") }
@@ -82,6 +83,19 @@ fun WorkoutOptimizerScreen(onNavigateBack: () -> Unit) {
     var optimizedWorkout by remember { mutableStateOf<OptimizedWorkout?>(null) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
+    LaunchedEffect(Unit) {
+        if (!isAiReady) {
+            MacroCalculator.init(context)
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            coroutineScope.launch {
+                MacroCalculator.release()
+            }
+        }
+    }
     val goalOptions = listOf("Hypertrophy", "Strength", "Shaping", "Endurance", "Failure Build")
     var expandedGoal by remember { mutableStateOf(false) }
     var expandedMuscle by remember { mutableStateOf(false) }

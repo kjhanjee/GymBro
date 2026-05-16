@@ -10,11 +10,9 @@ import com.google.ai.edge.litertlm.ConversationConfig
 import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
 import com.google.ai.edge.litertlm.SamplerConfig
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 import java.util.concurrent.Executors
@@ -57,6 +55,7 @@ object MacroCalculator {
             
             Log.d(TAG, "Copying model from assets: $assetSize bytes")
             _downloadProgress.value = 0f
+            var lastReportedProgress = -1f
             
             appContext.assets.open(MODEL_FILE_NAME).use { input ->
                 FileOutputStream(outFile).use { output ->
@@ -66,7 +65,13 @@ object MacroCalculator {
                     while (bytes >= 0) {
                         output.write(buffer, 0, bytes)
                         bytesCopied += bytes
-                        _downloadProgress.value = bytesCopied.toFloat() / assetSize
+                        
+                        val currentProgress = bytesCopied.toFloat() / assetSize
+                        if (currentProgress - lastReportedProgress >= 0.01f || currentProgress >= 1f) {
+                            _downloadProgress.value = currentProgress
+                            lastReportedProgress = currentProgress
+                        }
+
                         bytes = input.read(buffer)
                     }
                 }
@@ -89,13 +94,13 @@ object MacroCalculator {
         Log.d(TAG, "Starting LiteRT Engine init on thread: ${Thread.currentThread().name}")
         
         try {
-            val outFile = File(appContext.filesDir, MODEL_FILE_NAME)
-            if (!outFile.exists()) {
-                Log.e(TAG, "Model file not found at ${outFile.absolutePath}")
+            if (!prepareModel(appContext)) {
+                Log.e(TAG, "Failed to prepare model file")
                 _isInitializing.value = false
                 return@withContext
             }
 
+            val outFile = File(appContext.filesDir, MODEL_FILE_NAME)
             val activityManager = appContext.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
             val memoryInfo = ActivityManager.MemoryInfo()
             activityManager?.getMemoryInfo(memoryInfo)
@@ -135,6 +140,15 @@ object MacroCalculator {
         } finally {
             _isInitializing.value = false
         }
+    }
+
+    suspend fun release() = withContext(aiExecutor) {
+        engine?.close()
+        engine = null
+        chatConversation?.close()
+        chatConversation = null
+        _isReady.value = false
+        Log.d(TAG, "Engine and chat conversation released")
     }
 
     suspend fun generateResponse(prompt: String): String? = withContext(aiExecutor) {
@@ -209,6 +223,22 @@ object MacroCalculator {
     }.flowOn(aiExecutor)
 
     private var chatConversation: com.google.ai.edge.litertlm.Conversation? = null
+    private var releaseJob: Job? = null
+    private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+
+    fun scheduleRelease(context: Context) {
+        releaseJob?.cancel()
+        releaseJob = scope.launch {
+            delay(5 * 60 * 1000) // 5 minutes
+            Log.d(TAG, "5 minutes in background - auto-releasing AI model")
+            release()
+        }
+    }
+
+    fun cancelRelease() {
+        releaseJob?.cancel()
+        releaseJob = null
+    }
 
     fun startChat() {
         chatConversation?.close()

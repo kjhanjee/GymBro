@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gymlogger.ai.MacroCalculator
 import com.gymlogger.data.MealRepository
 import com.gymlogger.ui.components.GymBroTopAppBar
@@ -89,8 +90,8 @@ object MealTypeSerializer : KSerializer<MealType> {
 @Composable
 fun DietOptimizerScreen(onNavigateBack: () -> Unit) {
     val coroutineScope = rememberCoroutineScope()
-    val meals by MealRepository.meals.collectAsState()
-    val isAiReady by MacroCalculator.isReady.collectAsState()
+    val meals by MealRepository.meals.collectAsStateWithLifecycle(initialValue = emptyList())
+    val isAiReady by MacroCalculator.isReady.collectAsStateWithLifecycle()
     
     var optimizationGoal by remember { mutableStateOf("Fat Loss") }
     var restrictions by remember { mutableStateOf("") }
@@ -102,6 +103,21 @@ fun DietOptimizerScreen(onNavigateBack: () -> Unit) {
     var dietPlan by remember { mutableStateOf<DietPlan?>(null) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
+    val context = LocalContext.current
+
+    LaunchedEffect(Unit) {
+        if (!isAiReady) {
+            MacroCalculator.init(context)
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            coroutineScope.launch {
+                MacroCalculator.release()
+            }
+        }
+    }
     val goalOptions = listOf("Bulking", "Fat Loss", "Maintenance", "Body Recomposition", "Muscle Gain")
     var expandedGoal by remember { mutableStateOf(false) }
 

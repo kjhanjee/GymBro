@@ -23,6 +23,7 @@ object SettingsRepository {
     private val TARGET_WEIGHT_KG = floatPreferencesKey("target_weight_kg")
     private val GOAL = stringPreferencesKey("goal")
     private val TRAINING_CONTEXT_KEY = stringPreferencesKey("weekly_schedule")
+    private val CHAT_HISTORY_KEY = stringPreferencesKey("chat_history")
 
     private val _activeThemeHue = MutableStateFlow(210f)
     val activeThemeHue: StateFlow<Float> = _activeThemeHue.asStateFlow()
@@ -93,5 +94,15 @@ object SettingsRepository {
     }
     suspend fun setTrainingContext(context: Context, schedule: List<String>) {
         context.dataStore.edit { it[TRAINING_CONTEXT_KEY] = schedule.joinToString(",") }
+    }
+
+    suspend fun getChatHistory(context: Context): String? {
+        return context.dataStore.data.map { it[CHAT_HISTORY_KEY] }.first()
+    }
+
+    suspend fun setChatHistory(context: Context, history: String) {
+        context.dataStore.edit { preferences ->
+            preferences[CHAT_HISTORY_KEY] = history
+        }
     }
 }

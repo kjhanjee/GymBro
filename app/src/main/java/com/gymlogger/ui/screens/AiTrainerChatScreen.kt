@@ -32,14 +32,20 @@ import com.gymlogger.ai.MacroCalculator
 import com.gymlogger.data.RoutineRepository
 import com.gymlogger.data.SettingsRepository
 import com.gymlogger.ui.components.GymBroTopAppBar
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
+@Serializable
 enum class ChatRole {
     SYSTEM, USER, AI, SUMMARY
 }
 
+@Serializable
 data class ChatMessage(
     val text: String,
     val role: ChatRole
@@ -58,15 +64,47 @@ fun AiTrainerChatScreen(onNavigateBack: () -> Unit) {
     val messages = remember { mutableStateListOf<ChatMessage>() }
     var isThinking by remember { mutableStateOf(false) }
 
-    val isAiReady by MacroCalculator.isReady.collectAsState()
+    val isAiReady by MacroCalculator.isReady.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
 
-    val trainingContextNames by SettingsRepository.getTrainingContext(context).collectAsState(initial = emptyList())
-    val allRoutines by RoutineRepository.routinesFlow.collectAsState()
+    val trainingContextNames by SettingsRepository.getTrainingContext(context).collectAsStateWithLifecycle(initialValue = emptyList())
+    val allRoutines by RoutineRepository.routinesFlow.collectAsStateWithLifecycle(initialValue = emptyList())
     var expanded by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         MacroCalculator.startChat()
+        
+        // Restore chat history
+        val historyJson = SettingsRepository.getChatHistory(context)
+        if (!historyJson.isNullOrEmpty()) {
+            try {
+                val restored = Json.decodeFromString<List<ChatMessage>>(historyJson)
+                messages.clear()
+                messages.addAll(restored)
+            } catch (e: Exception) {
+                android.util.Log.e("AiTrainerChatScreen", "Failed to restore chat history", e)
+            }
+        }
+
+        if (!isAiReady) {
+            MacroCalculator.init(context)
+        }
+    }
+
+    // Persist chat history whenever messages change
+    LaunchedEffect(messages.size) {
+        if (messages.isNotEmpty()) {
+            val historyJson = Json.encodeToString(messages.toList())
+            SettingsRepository.setChatHistory(context, historyJson)
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            scope.launch {
+                MacroCalculator.release()
+            }
+        }
     }
 
     suspend fun getSystemPrompt(context: android.content.Context): String {

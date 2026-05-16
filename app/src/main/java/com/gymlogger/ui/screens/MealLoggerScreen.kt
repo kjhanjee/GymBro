@@ -15,6 +15,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gymlogger.ui.components.GymBroTopAppBar
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,8 +40,8 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MealLoggerScreen(onNavigateBack: () -> Unit) {
-    val meals by MealRepository.meals.collectAsState()
-    val isAiReady by MacroCalculator.isReady.collectAsState()
+    val meals by MealRepository.meals.collectAsStateWithLifecycle(initialValue = emptyList())
+    val isAiReady by MacroCalculator.isReady.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     var showAddMealDialog by remember { mutableStateOf(false) }
@@ -74,6 +75,14 @@ fun MealLoggerScreen(onNavigateBack: () -> Unit) {
             delay(500)
             MacroCalculator.init(context)
             isInitializingAi = false
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            coroutineScope.launch {
+                MacroCalculator.release()
+            }
         }
     }
 

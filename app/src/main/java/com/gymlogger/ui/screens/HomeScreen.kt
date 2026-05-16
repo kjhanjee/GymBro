@@ -22,6 +22,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gymlogger.model.Routine
 import com.gymlogger.ui.components.GymBroTopAppBar
 import com.gymlogger.ui.theme.GymBroTheme
@@ -64,7 +65,7 @@ fun HomeScreen(
     onNavigateToWorkoutOptimizer: () -> Unit,
     onNavigateToAiTrainer: () -> Unit
 ) {
-    val routines by com.gymlogger.data.RoutineRepository.getRoutines().collectAsState(initial = emptyList())
+    val routines by com.gymlogger.data.RoutineRepository.getRoutines().collectAsStateWithLifecycle(initialValue = emptyList())
     val coroutineScope = rememberCoroutineScope()
     val context = androidx.compose.ui.platform.LocalContext.current
     

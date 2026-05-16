@@ -28,21 +28,42 @@ import com.gymlogger.data.MealRepository
 import com.gymlogger.data.RoutineRepository
 import com.gymlogger.data.SettingsRepository
 import com.gymlogger.service.WorkoutService
+import kotlinx.coroutines.*
 import com.gymlogger.ui.navigation.AppNavigation
 import com.gymlogger.ui.theme.GymBroTheme
 import android.content.Intent
 import kotlinx.coroutines.launch
 
-class MainActivity : ComponentActivity() {
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.ProcessLifecycleOwner
+import android.content.ComponentCallbacks2
+
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+
+class MainActivity : ComponentActivity(), ComponentCallbacks2 {
+
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        if (level >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL) {
+            Log.w("MainActivity", "Memory pressure high (level $level) - releasing AI engine")
+            scope.launch {
+                MacroCalculator.release()
+            }
+        }
+    }
+
+    private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+
     override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         Log.d("MainActivity", "onCreate called, savedInstanceState is null: ${savedInstanceState == null}")
-        enableEdgeToEdge()
         setContent {
             val context = LocalContext.current
-            val themeHue by SettingsRepository.activeThemeHue.collectAsState()
-            val downloadProgress by MacroCalculator.downloadProgress.collectAsState()
-            val isAiReady by MacroCalculator.isReady.collectAsState()
+            val themeHue by SettingsRepository.activeThemeHue.collectAsStateWithLifecycle(0f)
+            val downloadProgress by MacroCalculator.downloadProgress.collectAsStateWithLifecycle()
+            val isAiReady by MacroCalculator.isReady.collectAsStateWithLifecycle()
             
             var isInitialized by rememberSaveable { mutableStateOf(false) }
 
@@ -65,15 +86,13 @@ class MainActivity : ComponentActivity() {
                     }
                 }
                 
-                if (!isInitialized || !isAiReady) {
+                if (!isInitialized) {
                     launch {
-                        MacroCalculator.prepareModel(context)
-                        MacroCalculator.init(context)
                         isInitialized = true
                         Log.d("MainActivity", "Initialization complete")
                     }
                 } else {
-                    Log.d("MainActivity", "Already initialized and AI ready")
+                    Log.d("MainActivity", "Already initialized")
                 }
             }
 

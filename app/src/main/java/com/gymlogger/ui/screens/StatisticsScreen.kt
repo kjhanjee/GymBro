@@ -20,6 +20,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.draw.scale
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gymlogger.data.SettingsRepository
 import com.gymlogger.data.MealRepository
 import com.gymlogger.model.Meal
@@ -38,10 +39,10 @@ fun StatisticsScreen(
     onNavigateBack: () -> Unit
 ) {
     val context = LocalContext.current
-    val weightUnit by SettingsRepository.getWeightUnit(context).collectAsState(initial = SettingsRepository.WeightUnit.LBS)
-    val timerUnit by SettingsRepository.getTimerUnit(context).collectAsState(initial = SettingsRepository.TimerUnit.MINUTES)
-    val workouts by RoutineRepository.completedWorkouts.collectAsState()
-    val meals by MealRepository.meals.collectAsState()
+    val weightUnit by SettingsRepository.getWeightUnit(context).collectAsStateWithLifecycle(initialValue = SettingsRepository.WeightUnit.LBS)
+    val timerUnit by SettingsRepository.getTimerUnit(context).collectAsStateWithLifecycle(initialValue = SettingsRepository.TimerUnit.MINUTES)
+    val workouts by RoutineRepository.completedWorkouts.collectAsStateWithLifecycle(initialValue = emptyList())
+    val meals by MealRepository.meals.collectAsStateWithLifecycle(initialValue = emptyList())
 
     // Aggregate stats
     val totalWorkouts = workouts.size
