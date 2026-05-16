@@ -97,11 +97,11 @@ object MealRepository {
                 json.decodeFromString<MealMacros>(jsonObject)
             } else {
                 android.util.Log.w("MealRepository", "AI returned null response")
-                MealMacros(0f, 0f, 0f, 0f)
+                MealMacros()
             }
         } catch (e: Exception) {
             android.util.Log.e("MealRepository", "Failed to parse macros JSON", e)
-            MealMacros(0f, 0f, 0f, 0f)
+            MealMacros()
         }
     }
 

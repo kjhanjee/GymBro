@@ -30,6 +30,8 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
+import java.text.SimpleDateFormat
+import java.util.*
 
 @Preview(showBackground = true)
 @Composable
@@ -66,6 +68,7 @@ fun HomeScreen(
     onNavigateToAiTrainer: () -> Unit
 ) {
     val routines by com.gymlogger.data.RoutineRepository.getRoutines().collectAsStateWithLifecycle(initialValue = emptyList())
+    val workouts by com.gymlogger.data.RoutineRepository.completedWorkouts.collectAsStateWithLifecycle(initialValue = emptyList())
     val coroutineScope = rememberCoroutineScope()
     val context = androidx.compose.ui.platform.LocalContext.current
     
@@ -209,10 +212,30 @@ fun HomeScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     routines.forEach { routine ->
+                        val lastWorkout = workouts.filter { it.routine.id == routine.id }
+                            .maxByOrNull { it.date }
+                        
+                        val lastCompleted = if (lastWorkout != null) {
+                            val sdf = SimpleDateFormat("MMM d", Locale.getDefault())
+                            val calendar = Calendar.getInstance()
+                            val today = calendar.get(Calendar.DAY_OF_YEAR)
+                            val thisYear = calendar.get(Calendar.YEAR)
+                            
+                            calendar.timeInMillis = lastWorkout.date
+                            val workoutDay = calendar.get(Calendar.DAY_OF_YEAR)
+                            val workoutYear = calendar.get(Calendar.YEAR)
+                            
+                            if (today == workoutDay && thisYear == workoutYear) {
+                                "Today"
+                            } else {
+                                sdf.format(Date(lastWorkout.date))
+                            }
+                        } else "Never"
+
                         HomeRoutineCard(
                             id = routine.id,
                             name = routine.name,
-                            lastCompleted = "Never", // You might want to get this from actual workout history
+                            lastCompleted = lastCompleted,
                             exercisesCount = routine.exercises.size,
                             onStartWorkout = { onNavigateToTrackWorkout(routine.id) },
                             onEditRoutine = { onEditRoutine(routine.id) },
@@ -315,14 +338,14 @@ fun HomeRoutineCard(
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(110.dp)
+                .heightIn(min = 110.dp)
                 .clickable(onClick = { expanded = true }),
             color = Color(0xFF1C1C1E),
             shape = RoundedCornerShape(16.dp)
         ) {
             Row(
                 modifier = Modifier
-                    .fillMaxSize()
+                    .fillMaxWidth()
                     .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -331,7 +354,8 @@ fun HomeRoutineCard(
                         text = name,
                         style = MaterialTheme.typography.titleLarge,
                         color = Color.White,
-                        fontSize = 19.sp
+                        fontSize = 19.sp,
+                        lineHeight = 24.sp
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(

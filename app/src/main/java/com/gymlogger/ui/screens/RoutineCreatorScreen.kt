@@ -478,8 +478,8 @@ fun RoutineCreatorScreen(
                     ) {
                         ExerciseCardItem(
                             routineExercise = exercise,
-                            weightUnit = weightUnit.name,
-                            timerUnit = timerUnit.name,
+                            weightUnit = weightUnit,
+                            timerUnit = timerUnit,
                             onRemove = {
                                 selectedExercises = selectedExercises.toMutableList().apply { removeAt(index) }
                             },
@@ -562,8 +562,8 @@ fun RoutineCreatorScreen(
 @Composable
 fun ExerciseCardItem(
     routineExercise: Routine.RoutineExercise,
-    weightUnit: String,
-    timerUnit: String,
+    weightUnit: SettingsRepository.WeightUnit,
+    timerUnit: SettingsRepository.TimerUnit,
     onRemove: () -> Unit,
     onUpdateSets: (List<Routine.RoutineExercise.SetConfig>) -> Unit,
     onUpdateInputType: (WorkoutSet.InputType) -> Unit,
@@ -634,15 +634,17 @@ fun ExerciseCardItem(
                             Spacer(modifier = Modifier.width(4.dp))
                             var restTimeText by remember(routineExercise.sets.firstOrNull()?.restTime, timerUnit) {
                                 val rest = routineExercise.sets.firstOrNull()?.restTime ?: 120
-                                mutableStateOf(UnitConverter.formatTimer(rest, SettingsRepository.TimerUnit.valueOf(timerUnit)))
+                                val unit = timerUnit
+                                mutableStateOf(UnitConverter.formatTimer(rest, unit))
                             }
                             BasicTextField(
                                 value = restTimeText,
                                 onValueChange = { newValue ->
                                     if (newValue.all { it.isDigit() }) {
-                                        restTimeText = newValue
-                                        if (newValue.isNotEmpty()) {
-                                            val newRest = UnitConverter.timerToBase(newValue, SettingsRepository.TimerUnit.valueOf(timerUnit))
+                                    restTimeText = newValue
+                                    if (newValue.isNotEmpty()) {
+                                        val unit = timerUnit
+                                        val newRest = UnitConverter.timerToBase(newValue, unit)
                                             val newSets = routineExercise.sets.map { it.copy(restTime = newRest) }
                                             onUpdateSets(newSets)
                                         }
@@ -655,12 +657,14 @@ fun ExerciseCardItem(
                                     .width(30.dp)
                                     .onFocusChanged { state ->
                                         if (!state.isFocused && restTimeText.isEmpty()) {
-                                            restTimeText = (routineExercise.sets.firstOrNull()?.restTime ?: 2).toString()
+                                            val rest = routineExercise.sets.firstOrNull()?.restTime ?: 120
+                                            val unit = timerUnit
+                                            restTimeText = UnitConverter.formatTimer(rest, unit)
                                         }
                                     }
                             )
                             Text(
-                                text = if (timerUnit == "MINUTES") " min rest" else " sec rest",
+                                text = if (timerUnit == SettingsRepository.TimerUnit.MINUTES) " min rest" else " sec rest",
                                 fontSize = 13.sp,
                                 color = Color(0xFF8E8E93)
                             )
@@ -713,7 +717,7 @@ fun ExerciseCardItem(
                         Text("Set", modifier = Modifier.width(30.dp), color = Color(0xFF8E8E93), fontSize = 12.sp, textAlign = TextAlign.Center)
                         
                         if (!isBodyweight) {
-                            Text(weightUnit, modifier = Modifier.weight(1f), color = Color(0xFF8E8E93), fontSize = 12.sp, textAlign = TextAlign.Center)
+                            Text(weightUnit.name.lowercase(), modifier = Modifier.weight(1f), color = Color(0xFF8E8E93), fontSize = 12.sp, textAlign = TextAlign.Center)
                         }
 
                         // Reps/Time Header with Dropdown
@@ -809,7 +813,7 @@ fun ExerciseCardItem(
                             // Weight Input
                             if (!isBodyweight) {
                                 var weightText by remember(setConfig.targetWeight, weightUnit) { 
-                                    val formatted = UnitConverter.formatWeight(setConfig.targetWeight, SettingsRepository.WeightUnit.valueOf(weightUnit))
+                                    val formatted = UnitConverter.formatWeight(setConfig.targetWeight, weightUnit)
                                     mutableStateOf(formatted) 
                                 }
                                 SmallTextField(
@@ -818,7 +822,7 @@ fun ExerciseCardItem(
                                         if (newValue.isEmpty() || newValue.all { it.isDigit() || it == '.' }) {
                                             weightText = newValue
                                             if (newValue.isNotEmpty() && newValue != ".") {
-                                                val weight = UnitConverter.weightToBase(newValue, SettingsRepository.WeightUnit.valueOf(weightUnit))
+                                                val weight = UnitConverter.weightToBase(newValue, weightUnit)
                                                 val newSets = routineExercise.sets.toMutableList()
                                                 newSets[index] = setConfig.copy(targetWeight = weight)
                                                 onUpdateSets(newSets)

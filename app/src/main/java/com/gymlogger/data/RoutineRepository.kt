@@ -616,6 +616,7 @@ object RoutineRepository {
 
 @Serializable
 data class InProgressWorkout(
+    val routineId: Long? = null,
     val exerciseStates: List<InProgressExerciseState> = emptyList(),
     val secondsElapsed: Long = 0L,
     val startTimeMillis: Long? = null,

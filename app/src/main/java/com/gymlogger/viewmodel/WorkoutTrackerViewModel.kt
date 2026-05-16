@@ -36,6 +36,8 @@ class WorkoutTrackerViewModel : ViewModel() {
     private val _isInitialized = MutableStateFlow(false)
     val isInitialized: StateFlow<Boolean> = _isInitialized.asStateFlow()
 
+    private var currentRoutineId: Long? = null
+
     fun setWorkoutTitle(title: String) {
         _workoutTitle.value = title
     }
@@ -48,11 +50,17 @@ class WorkoutTrackerViewModel : ViewModel() {
             val inProgress = RoutineRepository.getInProgressWorkout(context)
             
             if (inProgress != null && (inProgress.startTimeMillis != null || inProgress.exerciseStates.isNotEmpty())) {
-                // If we have a routineId, check if it matches the in-progress one (or if we don't care)
-                // For now, if anything is in progress, we restore it.
-                restoreFromInProgress(inProgress)
+                // If a specific routineId was requested, check if it matches the in-progress one
+                if (routineId != null && routineId != -1L && inProgress.routineId != routineId) {
+                    // Conflict: User wants a different routine than the one in progress.
+                    // Start fresh with the new routine.
+                    loadFromRoutine(routineId)
+                } else {
+                    // Either no routineId requested (Start Workout button), or it matches.
+                    restoreFromInProgress(inProgress)
+                }
             } else if (routineId != null && routineId != -1L) {
-                // Priority 2: Load from routine if provided
+                // Priority 2: Load from routine if provided and nothing in progress
                 loadFromRoutine(routineId)
             }
             
@@ -64,23 +72,23 @@ class WorkoutTrackerViewModel : ViewModel() {
     }
 
     private suspend fun restoreFromInProgress(inProgress: InProgressWorkout) {
+        currentRoutineId = inProgress.routineId
         _workoutTitle.value = inProgress.workoutTitle
         _exercises.clear()
         inProgress.exerciseStates.forEach { inProgressEx ->
             val exercise = ExerciseRepository.getExerciseById(inProgressEx.exerciseId)
             if (exercise != null) {
+                val restTime = inProgressEx.restTime.coerceIn(0, 3600)
                 val exerciseState = ExerciseState(
                     exercise = exercise,
-                    restTime = inProgressEx.restTime,
+                    restTime = restTime,
                     sets = mutableStateListOf(),
                     inputType = if (inProgressEx.inputType == "REPS") WorkoutSet.InputType.REPS else WorkoutSet.InputType.TIME,
                     id = inProgressEx.exerciseId
-                ).apply {
-                    restTimeInput = inProgressEx.restTime.toString()
-                }
+                )
                 inProgressEx.sets.forEach { inProgressSet ->
                     exerciseState.sets.add(SetState(
-                        weight = inProgressSet.weight,
+                        baseWeight = inProgressSet.weight.toFloatOrNull(),
                         reps = inProgressSet.reps,
                         rir = inProgressSet.rir,
                         type = WorkoutSet.SetType.valueOf(inProgressSet.type),
@@ -95,24 +103,24 @@ class WorkoutTrackerViewModel : ViewModel() {
     private suspend fun loadFromRoutine(routineId: Long) {
         val routine = RoutineRepository.getRoutineById(routineId)
         if (routine != null) {
+            currentRoutineId = routineId
             _workoutTitle.value = routine.name
             routine.exercises.forEach { routineEx ->
                 val exercise = ExerciseRepository.getExerciseById(routineEx.exerciseId)
                 if (exercise != null) {
                     val firstSet = routineEx.sets.firstOrNull()
+                    val restTime = (firstSet?.restTime ?: 0).coerceIn(0, 3600)
                     val exerciseState = ExerciseState(
                         exercise = exercise,
-                        restTime = firstSet?.restTime ?: 2,
+                        restTime = restTime,
                         sets = mutableStateListOf(),
                         inputType = routineEx.inputType,
                         id = routineEx.id
-                    ).apply {
-                        restTimeInput = restTime.toString()
-                    }
+                    )
                     routineEx.sets.forEach { setConfig ->
                         exerciseState.sets.add(
                             SetState(
-                                weight = if (setConfig.targetWeight == null || setConfig.targetWeight == 0f) "" else setConfig.targetWeight.toString(),
+                                baseWeight = setConfig.targetWeight,
                                 reps = if (setConfig.targetReps == null || setConfig.targetReps == 0) "" else setConfig.targetReps.toString(),
                                 rir = if (setConfig.targetRir == null) "" else setConfig.targetRir.toString(),
                                 type = setConfig.type
@@ -136,7 +144,7 @@ class WorkoutTrackerViewModel : ViewModel() {
                             ex.id,
                             ex.restTime,
                             ex.sets.map { s -> 
-                                Quintuple(s.weight, s.reps, s.rir, s.type, s.isCompleted) 
+                                Quintuple(s.baseWeight?.toString() ?: "", s.reps, s.rir, s.type, s.isCompleted) 
                             }
                         )
                     },
@@ -147,6 +155,7 @@ class WorkoutTrackerViewModel : ViewModel() {
             .distinctUntilChanged()
             .collectLatest { (title, exerciseList, _) ->
                 val inProgressWorkout = InProgressWorkout(
+                    routineId = currentRoutineId,
                     workoutTitle = title,
                     exerciseStates = _exercises.map { ex ->
                         InProgressExerciseState(
@@ -156,7 +165,7 @@ class WorkoutTrackerViewModel : ViewModel() {
                             inputType = ex.inputType.name,
                             sets = ex.sets.map { s ->
                                 InProgressSetState(
-                                    weight = s.weight,
+                                    weight = s.baseWeight?.toString() ?: "",
                                     reps = s.reps,
                                     rir = s.rir,
                                     type = s.type.name,

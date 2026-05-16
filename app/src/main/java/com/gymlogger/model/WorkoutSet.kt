@@ -13,7 +13,8 @@ data class WorkoutSet(
     val rir: Int? = null, // Reps In Reserve
     val inputType: InputType = InputType.REPS,
     val notes: String? = null,
-    val isCompleted: Boolean = false
+    val isCompleted: Boolean = false,
+    val restTime: Int? = null // New field
 ) {
     @Serializable
     enum class SetType(val label: String, val shortLabel: String) {

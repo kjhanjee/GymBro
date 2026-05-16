@@ -62,13 +62,14 @@ import kotlin.math.roundToInt
 
 @Stable
 class SetState(
-    weight: String = "",
+    baseWeight: Float? = null,
     reps: String = "",
     rir: String = "",
     type: WorkoutSet.SetType = WorkoutSet.SetType.NORMAL,
     isCompleted: Boolean = false
 ) {
-    var weight by mutableStateOf(weight)
+    var baseWeight by mutableStateOf(baseWeight) // Always in KG
+    var weightDisplay by mutableStateOf("")     // UI String (LBS or KG)
     var reps by mutableStateOf(reps)
     var rir by mutableStateOf(rir)
     var type by mutableStateOf(type)
@@ -78,13 +79,13 @@ class SetState(
 @Stable
 class ExerciseState(
     val exercise: Exercise,
-    restTime: Int = 2,
+    restTime: Int = 120,
     val sets: SnapshotStateList<SetState> = mutableStateListOf(),
     inputType: WorkoutSet.InputType = WorkoutSet.InputType.REPS,
     val id: Long = System.currentTimeMillis() + (Math.random() * 1000000).toLong()
 ) {
     var restTime by mutableStateOf(restTime)
-    var restTimeInput by mutableStateOf(restTime.toString())
+    var restTimeInput by mutableStateOf("")
     var inputType by mutableStateOf(inputType)
 }
 
@@ -195,7 +196,6 @@ fun WorkoutTrackerScreen(
     val secondsElapsed by workoutService?.secondsElapsed?.collectAsStateWithLifecycle(0L) ?: remember { mutableStateOf(0L) }
     val restSecondsRemaining by workoutService?.restSecondsRemaining?.collectAsStateWithLifecycle(0) ?: remember { mutableStateOf(0) }
     val isRestTimerActive by workoutService?.isRestTimerActive?.collectAsStateWithLifecycle(false) ?: remember { mutableStateOf(false) }
-    var activeRestTimerExerciseId by remember { mutableStateOf<Long?>(null) }
 
     val timerText = remember(secondsElapsed) {
         val h = secondsElapsed / 3600
@@ -219,31 +219,26 @@ fun WorkoutTrackerScreen(
 
     // Handle unit changes for existing data
     var lastWeightUnit by remember { mutableStateOf(weightUnit) }
-    var lastTimerUnit by remember { mutableStateOf(timerUnit) }
+    var lastTimerUnitRef by remember { mutableStateOf<SettingsRepository.TimerUnit?>(null) }
 
-    LaunchedEffect(weightUnit) {
-        if (lastWeightUnit != weightUnit) {
+    // Handle unit changes: Refresh UI display values when units toggle
+    LaunchedEffect(weightUnit, timerUnit, isInitialized, exercises.size) {
+        if (isInitialized) {
             exercises.forEach { ex ->
+                // Refresh weight strings for all sets from their BASE (KG)
                 ex.sets.forEach { set ->
-                    if (set.weight.isNotBlank()) {
-                        val baseWeight = UnitConverter.weightToBase(set.weight, lastWeightUnit)
-                        set.weight = UnitConverter.formatWeight(baseWeight, weightUnit)
+                    if (set.weightDisplay.isEmpty() || lastWeightUnit != weightUnit) {
+                        set.weightDisplay = UnitConverter.formatWeight(set.baseWeight, weightUnit)
                     }
+                }
+                
+                // Refresh rest time input string from its BASE (Seconds)
+                if (ex.restTimeInput.isEmpty() || lastTimerUnitRef != timerUnit) {
+                    ex.restTimeInput = UnitConverter.formatTimer(ex.restTime, timerUnit)
                 }
             }
             lastWeightUnit = weightUnit
-        }
-    }
-
-    LaunchedEffect(timerUnit) {
-        if (lastTimerUnit != timerUnit) {
-            exercises.forEach { ex ->
-                val baseTimer = UnitConverter.timerToBase(ex.restTime.toString(), lastTimerUnit)
-                val newRestTime = UnitConverter.formatTimer(baseTimer, timerUnit).toIntOrNull() ?: 0
-                ex.restTime = newRestTime
-                ex.restTimeInput = newRestTime.toString()
-            }
-            lastTimerUnit = timerUnit
+            lastTimerUnitRef = timerUnit
         }
     }
 
@@ -269,10 +264,11 @@ fun WorkoutTrackerScreen(
                             exerciseName = exerciseState.exercise.name,
                             type = setState.type,
                             reps = setState.reps.toIntOrNull(),
-                            weight = UnitConverter.weightToBase(setState.weight, weightUnit),
+                            weight = setState.baseWeight ?: 0f,
                             rir = setState.rir.toIntOrNull(),
                             inputType = exerciseState.inputType,
-                            isCompleted = setState.isCompleted
+                            isCompleted = setState.isCompleted,
+                            restTime = exerciseState.restTime
                         )
                     }
             }
@@ -419,8 +415,8 @@ fun WorkoutTrackerScreen(
                 ) {
                     ExerciseTrackerItem(
                         exerciseState = exerciseState,
-                        weightUnit = weightUnit.name.lowercase(),
-                        timerUnit = timerUnit.name.lowercase(),
+                        weightUnit = weightUnit,
+                        timerUnit = timerUnit,
                         onAddSet = {
                             exerciseState.sets.add(
                                 SetState(
@@ -439,9 +435,7 @@ fun WorkoutTrackerScreen(
                         onToggleSetCompleted = { setIndex, completed ->
                             exerciseState.sets[setIndex].isCompleted = completed
                             if (completed && exerciseState.restTime > 0) {
-                                activeRestTimerExerciseId = exerciseState.id
-                                val baseRestSeconds = UnitConverter.timerToBase(exerciseState.restTime.toString(), timerUnit).toInt()
-                                workoutService?.startRestTimer(baseRestSeconds)
+                                workoutService?.startRestTimer(exerciseState.restTime)
                             }
                         },
                         onRestTimeChange = { newRest ->
@@ -508,7 +502,7 @@ fun WorkoutTrackerScreen(
             onSelect = { exercise ->
                 val newState = ExerciseState(
                     exercise = exercise,
-                    restTime = 2,
+                    restTime = 0,
                     sets = mutableStateListOf(SetState()),
                     id = System.currentTimeMillis()
                 )
@@ -527,18 +521,35 @@ fun WorkoutTrackerScreen(
         AlertDialog(
             onDismissRequest = { showExitDialog = false },
             title = { Text("Exit Workout?") },
-            text = { Text("Your progress will be saved automatically, but the workout won't be completed.") },
+            text = { Text("Your progress will be saved automatically, but the workout won't be completed. You can also discard the progress entirely.") },
             confirmButton = {
                 TextButton(onClick = { 
                     showExitDialog = false
                     onNavigateBack() 
                 }) {
-                    Text("Exit", color = MaterialTheme.colorScheme.error)
+                    Text("Exit", color = MaterialTheme.colorScheme.primary)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showExitDialog = false }) {
-                    Text("Stay")
+                Row {
+                    TextButton(onClick = {
+                        scope.launch {
+                            showExitDialog = false
+                            // Stop service
+                            val stopIntent = Intent(context, WorkoutService::class.java).apply {
+                                action = WorkoutService.ACTION_STOP_WORKOUT
+                            }
+                            context.startService(stopIntent)
+                            // Clear state
+                            RoutineRepository.clearInProgressWorkout(context)
+                            onNavigateBack()
+                        }
+                    }) {
+                        Text("Discard", color = MaterialTheme.colorScheme.error)
+                    }
+                    TextButton(onClick = { showExitDialog = false }) {
+                        Text("Stay")
+                    }
                 }
             }
         )
@@ -548,8 +559,8 @@ fun WorkoutTrackerScreen(
 @Composable
 fun ExerciseTrackerItem(
     exerciseState: ExerciseState,
-    weightUnit: String,
-    timerUnit: String,
+    weightUnit: SettingsRepository.WeightUnit,
+    timerUnit: SettingsRepository.TimerUnit,
     onAddSet: () -> Unit,
     onDeleteSet: (Int) -> Unit,
     onRemoveExercise: () -> Unit,
@@ -607,7 +618,7 @@ fun ExerciseTrackerItem(
             ) {
                 Text("Set", modifier = Modifier.width(40.dp), style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.5f), textAlign = TextAlign.Center)
                 Text("Type", modifier = Modifier.width(60.dp), style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.5f), textAlign = TextAlign.Center)
-                Text(weightUnit, modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.5f), textAlign = TextAlign.Center)
+                Text(weightUnit.name.lowercase(), modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.5f), textAlign = TextAlign.Center)
                 Text(if (exerciseState.inputType == WorkoutSet.InputType.REPS) "Reps" else "Time", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.5f), textAlign = TextAlign.Center)
                 Text("RIR", modifier = Modifier.weight(0.8f), style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.5f), textAlign = TextAlign.Center)
                 Spacer(modifier = Modifier.width(48.dp))
@@ -621,6 +632,7 @@ fun ExerciseTrackerItem(
                     setState = setState,
                     onToggleCompleted = { completed -> onToggleSetCompleted(index, completed) },
                     inputType = exerciseState.inputType,
+                    weightUnit = weightUnit,
                     onDelete = { onDeleteSet(index) }
                 )
             }
@@ -646,9 +658,16 @@ fun ExerciseTrackerItem(
                     Spacer(modifier = Modifier.width(4.dp))
                     BasicTextField(
                         value = exerciseState.restTimeInput,
-                        onValueChange = { 
-                            exerciseState.restTimeInput = it
-                            it.toIntOrNull()?.let { time -> onRestTimeChange(time) }
+                        onValueChange = { newValue ->
+                            if (newValue.isEmpty() || newValue.all { it.isDigit() || it == '.' }) {
+                                exerciseState.restTimeInput = newValue
+                                if (newValue.isNotEmpty() && newValue != ".") {
+                                    val unit = timerUnit
+                                    val seconds = UnitConverter.timerToSeconds(newValue, unit)
+                                    exerciseState.restTime = seconds
+                                    onRestTimeChange(seconds)
+                                }
+                            }
                         },
                         textStyle = TextStyle(color = Color.White, fontSize = 14.sp, textAlign = TextAlign.Center),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -659,7 +678,7 @@ fun ExerciseTrackerItem(
                             .padding(vertical = 2.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text(timerUnit, style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.5f))
+                    Text(timerUnit.name.lowercase(), style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.5f))
                 }
             }
         }
@@ -672,6 +691,7 @@ fun SetRow(
     setState: SetState,
     onToggleCompleted: (Boolean) -> Unit,
     inputType: WorkoutSet.InputType,
+    weightUnit: SettingsRepository.WeightUnit,
     onDelete: () -> Unit
 ) {
     var showTypeMenu by remember { mutableStateOf(false) }
@@ -741,8 +761,11 @@ fun SetRow(
         // Weight
         Box(modifier = Modifier.weight(1f).padding(horizontal = 4.dp)) {
             BasicTextField(
-                value = setState.weight,
-                onValueChange = { setState.weight = it },
+                value = setState.weightDisplay,
+                onValueChange = { 
+                    setState.weightDisplay = it
+                    setState.baseWeight = UnitConverter.weightToBase(it, weightUnit)
+                },
                 textStyle = TextStyle(
                     color = if (setState.isCompleted) MaterialTheme.colorScheme.primary else Color.White,
                     fontSize = 16.sp,
@@ -753,7 +776,7 @@ fun SetRow(
                 cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .onFocusChanged { if (it.isFocused && setState.weight.isEmpty()) { /* help? */ } }
+                    .onFocusChanged { if (it.isFocused && setState.weightDisplay.isEmpty()) { /* help? */ } }
                     .background(Color.White.copy(alpha = 0.05f), RoundedCornerShape(6.dp))
                     .padding(vertical = 8.dp)
             )

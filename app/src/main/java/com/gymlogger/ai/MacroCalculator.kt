@@ -330,8 +330,9 @@ object MacroCalculator {
     suspend fun calculateMacros(mealDescription: String, labelsInfo: String): String? {
         val prompt = """
             System: You are an expert Dietician. You need to analyze the meals provided by the user and provide the output in the below JSON format: 
-            {"calories": float, "protein": float, "carbs": float, "fats": float}
-            Do not include any explanation or markdown.
+            {"calories": float, "protein": float, "carbs": float, "fats": float, "fibre": float, "sugar": float, "vitaminB": float, "vitaminD": float, "omega": float}
+            Do not include any explanation or markdown. 
+            Units: calories in kcal, protein/carbs/fats/fibre/sugar in grams (sugar field refers to total refined sugar), vitaminB in mg, vitaminD in mcg, omega in mg.
             Use the below label information for analyzing the meals provided by the user, if the corresponding items are present in the meal logged: 
             $labelsInfo
             User: Analyze this meal: $mealDescription

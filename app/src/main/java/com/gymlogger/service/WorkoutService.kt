@@ -131,16 +131,20 @@ class WorkoutService : Service() {
         if (_isActive.value) return
 
         _isActive.value = true
-        startTimeMillis = System.currentTimeMillis()
         
         serviceScope.launch {
-            RoutineRepository.updateInProgressWorkout(applicationContext) { 
-                it.copy(startTimeMillis = startTimeMillis) 
+            val inProgress = RoutineRepository.getInProgressWorkout(applicationContext)
+            if (inProgress?.startTimeMillis != null) {
+                startTimeMillis = inProgress.startTimeMillis
+            } else {
+                startTimeMillis = System.currentTimeMillis()
+                RoutineRepository.updateInProgressWorkout(applicationContext) { 
+                    it.copy(startTimeMillis = startTimeMillis) 
+                }
             }
+            ensureForeground()
+            startTimer()
         }
-
-        ensureForeground()
-        startTimer()
     }
 
     private fun startTimer() {

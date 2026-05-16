@@ -1,5 +1,6 @@
 package com.gymlogger.model
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -19,7 +20,13 @@ data class MealMacros(
     val calories: Float = 0f,
     val protein: Float = 0f,
     val carbs: Float = 0f,
-    val fats: Float = 0f
+    val fats: Float = 0f,
+    val fibre: Float = 0f,
+    @SerialName("sugar")
+    val refinedSugar: Float = 0f,
+    val vitaminB: Float = 0f,
+    val vitaminD: Float = 0f,
+    val omega: Float = 0f
 )
 
 @Serializable

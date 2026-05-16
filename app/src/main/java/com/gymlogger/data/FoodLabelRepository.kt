@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -18,10 +19,16 @@ data class FoodLabel(
     val protein: Float,
     val carbs: Float,
     val fats: Float,
+    val fibre: Float = 0f,
+    @SerialName("sugar")
+    val refinedSugar: Float = 0f,
+    val vitaminB: Float = 0f,
+    val vitaminD: Float = 0f,
+    val omega: Float = 0f,
     val servingSize: String = "100g"
 ) {
     val labelInfo: String
-        get() = "$servingSize: ${calories}kcal, ${protein}g protein, ${carbs}g carbs, ${fats}g fats"
+        get() = "$servingSize: ${calories}kcal, ${protein}g protein, ${carbs}g carbs, ${fats}g fats, ${fibre}g fibre, ${refinedSugar}g refined sugar, ${vitaminB}mg vitB, ${vitaminD}mcg vitD, ${omega}mg omega"
 }
 
 object FoodLabelRepository {
@@ -50,11 +57,16 @@ object FoodLabelRepository {
         protein: Float,
         carbs: Float,
         fats: Float,
+        fibre: Float,
+        refinedSugar: Float,
+        vitaminB: Float,
+        vitaminD: Float,
+        omega: Float,
         servingSize: String
     ) {
         val current = _labels.value.toMutableList()
         val index = current.indexOfFirst { it.itemName.equals(itemName, ignoreCase = true) }
-        val newLabel = FoodLabel(itemName, calories, protein, carbs, fats, servingSize)
+        val newLabel = FoodLabel(itemName, calories, protein, carbs, fats, fibre, refinedSugar, vitaminB, vitaminD, omega, servingSize)
         if (index != -1) {
             current[index] = newLabel
         } else {

@@ -51,9 +51,12 @@ fun StatisticsScreen(
         workout.sets.sumOf { set -> ((set.reps ?: 0) * (set.weight ?: 0f)).toDouble() }
     }.toFloat()
     
-    val avgRest = if (workouts.isNotEmpty()) {
-        // This is a simplification, ideally we'd track actual rest time
-        2
+    val totalRestTime = workouts.sumOf { workout ->
+        workout.sets.sumOf { it.restTime ?: 0 }
+    }
+    
+    val avgRest = if (totalSets > 0) {
+        totalRestTime / totalSets
     } else 0
 
     Scaffold(
@@ -84,8 +87,13 @@ fun StatisticsScreen(
             }
 
             item {
-                // Nutritional Breakdown Section
-                NutritionalBreakdownSection(meals = meals)
+                // Macronutritional Breakdown Section
+                MacronutritionalBreakdownSection(meals = meals)
+            }
+
+            item {
+                // Micronutritional Breakdown Section
+                MicronutritionalBreakdownSection(meals = meals)
             }
 
             item {
@@ -93,15 +101,15 @@ fun StatisticsScreen(
             }
 
             item {
-                // Weekly Activity (Calculated from actual workouts)
+                // Weekly Activity (Calculated from actual sets)
                 val calendar = Calendar.getInstance()
+                val currentWeek = calendar.get(Calendar.WEEK_OF_YEAR)
+                val currentYear = calendar.get(Calendar.YEAR)
                 val dayNames = listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
                 val weeklyData = dayNames.map { dayName ->
-                    val count = workouts.count { workout ->
+                    val setsCount = workouts.filter { workout ->
                         val workoutCal = Calendar.getInstance().apply { timeInMillis = workout.date }
-                        val currentWeek = calendar.get(Calendar.WEEK_OF_YEAR)
                         val workoutWeek = workoutCal.get(Calendar.WEEK_OF_YEAR)
-                        val currentYear = calendar.get(Calendar.YEAR)
                         val workoutYear = workoutCal.get(Calendar.YEAR)
                         
                         val dayOfWeek = workoutCal.get(Calendar.DAY_OF_WEEK)
@@ -117,11 +125,15 @@ fun StatisticsScreen(
                         }
                         
                         currentWeek == workoutWeek && currentYear == workoutYear && dayOfWeek == targetDayOfWeek
-                    }
-                    dayName to count
+                    }.sumOf { it.sets.size }
+                    dayName to setsCount
                 }
 
-                WeeklyActivityChart(workouts = weeklyData)
+                val totalSetsThisWeek = weeklyData.sumOf { it.second }
+                val daysWithActivity = weeklyData.count { it.second > 0 }
+                val avgSetsPerDay = if (daysWithActivity > 0) totalSetsThisWeek.toFloat() / daysWithActivity else 0f
+
+                WeeklyActivityChart(dailySets = weeklyData, avgSets = avgSetsPerDay)
             }
 
             item {
@@ -250,7 +262,7 @@ fun ExerciseAveragesCard(
 }
 
 @Composable
-fun NutritionalBreakdownSection(meals: List<Meal>) {
+fun MacronutritionalBreakdownSection(meals: List<Meal>) {
     val calendar = Calendar.getInstance().apply {
         firstDayOfWeek = Calendar.MONDAY
         set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
@@ -282,7 +294,7 @@ fun NutritionalBreakdownSection(meals: List<Meal>) {
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                "Weekly Average Nutrition",
+                "Weekly Average Macros",
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Bold
@@ -347,6 +359,131 @@ fun NutritionalBreakdownSection(meals: List<Meal>) {
                                 SmallMacroText("P: ${typeProtein.toInt()}g")
                                 SmallMacroText("C: ${typeCarbs.toInt()}g")
                                 SmallMacroText("F: ${typeFats.toInt()}g")
+                            }
+                        }
+                    }
+                }
+            } else {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    "No meals logged this week",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFF8E8E93),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun MicronutritionalBreakdownSection(meals: List<Meal>) {
+    val calendar = Calendar.getInstance().apply {
+        firstDayOfWeek = Calendar.MONDAY
+        set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
+        set(Calendar.HOUR_OF_DAY, 0)
+        set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+    }
+    val startOfWeek = calendar.timeInMillis
+    
+    calendar.add(Calendar.DAY_OF_YEAR, 7)
+    val endOfWeek = calendar.timeInMillis
+
+    val weekMeals = meals.filter { it.date in startOfWeek until endOfWeek }
+    
+    val totalFibre = weekMeals.sumOf { it.macros.fibre.toDouble() }.toFloat()
+    val totalSugar = weekMeals.sumOf { it.macros.refinedSugar.toDouble() }.toFloat()
+    val totalVitB = weekMeals.sumOf { it.macros.vitaminB.toDouble() }.toFloat()
+    val totalVitD = weekMeals.sumOf { it.macros.vitaminD.toDouble() }.toFloat()
+    val totalOmega = weekMeals.sumOf { it.macros.omega.toDouble() }.toFloat()
+
+    val avgFibre = totalFibre / 7f
+    val avgSugar = totalSugar / 7f
+    val avgVitB = totalVitB / 7f
+    val avgVitD = totalVitD / 7f
+    val avgOmega = totalOmega / 7f
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF1C1C1E))
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                "Weekly Average Micros",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold
+            )
+            
+            Text(
+                "Daily average based on current week (Mon-Sun)",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color(0xFF8E8E93)
+            )
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            // Weekly Averages
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                MacroStatColumn("Fibre", "${avgFibre.toInt()}", "g")
+                MacroStatColumn("Ref. Sugar", "${avgSugar.toInt()}", "g")
+                MacroStatColumn("Vit B", String.format(Locale.getDefault(), "%.1f", avgVitB), "mg")
+                MacroStatColumn("Vit D", String.format(Locale.getDefault(), "%.1f", avgVitD), "mcg")
+                MacroStatColumn("Omega", "${avgOmega.toInt()}", "mg")
+            }
+
+            if (weekMeals.isNotEmpty()) {
+                HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp), color = Color(0xFF2C2C2E))
+                
+                Text(
+                    "Avg. Daily Breakdown by Meal Type",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Color(0xFF8E8E93)
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                val mealTypeOrder = listOf(MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER, MealType.SNACK, MealType.PRE_WORKOUT)
+                
+                mealTypeOrder.forEach { type ->
+                    val mealsOfType = weekMeals.filter { it.type == type }
+                    if (mealsOfType.isNotEmpty()) {
+                        val typeFibre = mealsOfType.sumOf { it.macros.fibre.toDouble() }.toFloat() / 7f
+                        val typeSugar = mealsOfType.sumOf { it.macros.refinedSugar.toDouble() }.toFloat() / 7f
+                        val typeVitB = mealsOfType.sumOf { it.macros.vitaminB.toDouble() }.toFloat() / 7f
+                        val typeVitD = mealsOfType.sumOf { it.macros.vitaminD.toDouble() }.toFloat() / 7f
+                        val typeOmega = mealsOfType.sumOf { it.macros.omega.toDouble() }.toFloat() / 7f
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                type.name.lowercase().replaceFirstChar { it.uppercase() },
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color.White,
+                                modifier = Modifier.width(80.dp)
+                            )
+                            
+                            Column(horizontalAlignment = Alignment.End) {
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    SmallMacroText("Fib: ${typeFibre.toInt()}g")
+                                    SmallMacroText("Sug: ${typeSugar.toInt()}g")
+                                    SmallMacroText("B: ${String.format(Locale.getDefault(), "%.1f", typeVitB)}mg")
+                                }
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    SmallMacroText("D: ${String.format(Locale.getDefault(), "%.1f", typeVitD)}mcg")
+                                    SmallMacroText("Omg: ${typeOmega.toInt()}mg")
+                                }
                             }
                         }
                     }
@@ -472,7 +609,8 @@ fun StatRow(
 
 @Composable
 fun WeeklyActivityChart(
-    workouts: List<Pair<String, Int>>
+    dailySets: List<Pair<String, Int>>,
+    avgSets: Float
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -482,7 +620,7 @@ fun WeeklyActivityChart(
             modifier = Modifier.padding(16.dp)
         ) {
             Text(
-                text = "Weekly Activity",
+                text = "Weekly Activity (Avg: ${String.format(Locale.getDefault(), "%.1f", avgSets)} sets/day)",
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.White
@@ -497,8 +635,8 @@ fun WeeklyActivityChart(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Bottom
             ) {
-                val maxCount = workouts.maxOf { it.second }.coerceAtLeast(1)
-                workouts.forEach { (day, count) ->
+                val maxCount = dailySets.maxOf { it.second }.coerceAtLeast(1)
+                dailySets.forEach { (day, count) ->
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier.weight(1f)
@@ -550,7 +688,7 @@ fun WeeklyActivityChart(
 
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "Total workouts this week: ${workouts.sumOf { it.second }}",
+                text = "Total sets this week: ${dailySets.sumOf { it.second }}",
                 fontSize = 12.sp,
                 color = Color(0xFF8E8E93),
                 textAlign = TextAlign.Center,

@@ -325,6 +325,25 @@ fun MealCard(meal: Meal, onEdit: () -> Unit, onDelete: () -> Unit) {
                     MacroItem("Carbs", "${meal.macros.carbs.toInt()}g")
                     MacroItem("Fats", "${meal.macros.fats.toInt()}g")
                 }
+
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = "Micros",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Color(0xFF8E8E93),
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    MacroItem("Fibre", "${meal.macros.fibre.toInt()}g")
+                    MacroItem("Refined Sugar", "${meal.macros.refinedSugar.toInt()}g")
+                    MacroItem("Vit B", "${String.format(java.util.Locale.getDefault(), "%.1f", meal.macros.vitaminB)}mg")
+                    MacroItem("Vit D", "${String.format(java.util.Locale.getDefault(), "%.1f", meal.macros.vitaminD)}mcg")
+                    MacroItem("Omega", "${meal.macros.omega.toInt()}mg")
+                }
                 
                 HorizontalDivider(
                     modifier = Modifier.padding(vertical = 12.dp),
@@ -410,6 +429,11 @@ fun FoodLabelDialog(onDismiss: () -> Unit) {
     var protein by remember { mutableStateOf("") }
     var carbs by remember { mutableStateOf("") }
     var fats by remember { mutableStateOf("") }
+    var fibre by remember { mutableStateOf("") }
+    var refinedSugar by remember { mutableStateOf("") }
+    var vitaminB by remember { mutableStateOf("") }
+    var vitaminD by remember { mutableStateOf("") }
+    var omega by remember { mutableStateOf("") }
 
     val isFormValid = itemName.isNotBlank() && 
                       servingSize.isNotBlank() &&
@@ -424,191 +448,301 @@ fun FoodLabelDialog(onDismiss: () -> Unit) {
             color = Color(0xFF1C1C1E),
             modifier = Modifier.fillMaxWidth().fillMaxHeight(0.9f).padding(16.dp)
         ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Text("Food Labels", style = MaterialTheme.typography.headlineSmall, color = Color.White)
-                Text(
-                    "Define nutrition facts for specific items.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF8E8E93)
-                )
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text("Food Labels", style = MaterialTheme.typography.headlineSmall, color = Color.White)
+                    Text(
+                        "Define nutrition facts for specific items.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFF8E8E93)
+                    )
 
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        TextField(
-                            value = itemName,
-                            onValueChange = { itemName = it },
-                            label = { Text("Item Name") },
-                            modifier = Modifier.weight(1.5f),
-                            singleLine = true,
-                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                            colors = TextFieldDefaults.colors(
-                                focusedContainerColor = Color(0xFF2C2C2E),
-                                unfocusedContainerColor = Color(0xFF2C2C2E),
-                                focusedTextColor = Color.White,
-                                unfocusedTextColor = Color.White,
-                                focusedIndicatorColor = Color.Transparent,
-                                unfocusedIndicatorColor = Color.Transparent
-                            ),
-                            shape = RoundedCornerShape(8.dp)
-                        )
-                        TextField(
-                            value = servingSize,
-                            onValueChange = { servingSize = it },
-                            label = { Text("Serving") },
-                            placeholder = { Text("e.g. 100g") },
-                            modifier = Modifier.weight(1f),
-                            singleLine = true,
-                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                            colors = TextFieldDefaults.colors(
-                                focusedContainerColor = Color(0xFF2C2C2E),
-                                unfocusedContainerColor = Color(0xFF2C2C2E),
-                                focusedTextColor = Color.White,
-                                unfocusedTextColor = Color.White,
-                                focusedIndicatorColor = Color.Transparent,
-                                unfocusedIndicatorColor = Color.Transparent
-                            ),
-                            shape = RoundedCornerShape(8.dp)
-                        )
-                    }
-
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        TextField(
-                            value = calories,
-                            onValueChange = { if (it.isEmpty() || it.toFloatOrNull() != null) calories = it },
-                            label = { Text("Calories (kcal)") },
-                            modifier = Modifier.weight(1f),
-                            singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
-                            colors = TextFieldDefaults.colors(
-                                focusedContainerColor = Color(0xFF2C2C2E),
-                                unfocusedContainerColor = Color(0xFF2C2C2E),
-                                focusedTextColor = Color.White,
-                                unfocusedTextColor = Color.White,
-                                focusedIndicatorColor = Color.Transparent,
-                                unfocusedIndicatorColor = Color.Transparent
-                            ),
-                            shape = RoundedCornerShape(8.dp)
-                        )
-                        TextField(
-                            value = protein,
-                            onValueChange = { if (it.isEmpty() || it.toFloatOrNull() != null) protein = it },
-                            label = { Text("Protein (g)") },
-                            modifier = Modifier.weight(1f),
-                            singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
-                            colors = TextFieldDefaults.colors(
-                                focusedContainerColor = Color(0xFF2C2C2E),
-                                unfocusedContainerColor = Color(0xFF2C2C2E),
-                                focusedTextColor = Color.White,
-                                unfocusedTextColor = Color.White,
-                                focusedIndicatorColor = Color.Transparent,
-                                unfocusedIndicatorColor = Color.Transparent
-                            ),
-                            shape = RoundedCornerShape(8.dp)
-                        )
-                    }
-
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        TextField(
-                            value = carbs,
-                            onValueChange = { if (it.isEmpty() || it.toFloatOrNull() != null) carbs = it },
-                            label = { Text("Carbs (g)") },
-                            modifier = Modifier.weight(1f),
-                            singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
-                            colors = TextFieldDefaults.colors(
-                                focusedContainerColor = Color(0xFF2C2C2E),
-                                unfocusedContainerColor = Color(0xFF2C2C2E),
-                                focusedTextColor = Color.White,
-                                unfocusedTextColor = Color.White,
-                                focusedIndicatorColor = Color.Transparent,
-                                unfocusedIndicatorColor = Color.Transparent
-                            ),
-                            shape = RoundedCornerShape(8.dp)
-                        )
-                        TextField(
-                            value = fats,
-                            onValueChange = { if (it.isEmpty() || it.toFloatOrNull() != null) fats = it },
-                            label = { Text("Fats (g)") },
-                            modifier = Modifier.weight(1f),
-                            singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
-                            colors = TextFieldDefaults.colors(
-                                focusedContainerColor = Color(0xFF2C2C2E),
-                                unfocusedContainerColor = Color(0xFF2C2C2E),
-                                focusedTextColor = Color.White,
-                                unfocusedTextColor = Color.White,
-                                focusedIndicatorColor = Color.Transparent,
-                                unfocusedIndicatorColor = Color.Transparent
-                            ),
-                            shape = RoundedCornerShape(8.dp)
-                        )
-                    }
-                }
-
-                Button(
-                    onClick = {
-                        coroutineScope.launch {
-                            FoodLabelRepository.saveLabel(
-                                context,
-                                itemName,
-                                calories.toFloatOrNull() ?: 0f,
-                                protein.toFloatOrNull() ?: 0f,
-                                carbs.toFloatOrNull() ?: 0f,
-                                fats.toFloatOrNull() ?: 0f,
-                                servingSize
+                    Column(
+                        modifier = Modifier
+                            .weight(1f, fill = false)
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            TextField(
+                                value = itemName,
+                                onValueChange = { itemName = it },
+                                label = { Text("Item Name") },
+                                modifier = Modifier.weight(1.5f),
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                                colors = TextFieldDefaults.colors(
+                                    focusedContainerColor = Color(0xFF2C2C2E),
+                                    unfocusedContainerColor = Color(0xFF2C2C2E),
+                                    focusedTextColor = Color.White,
+                                    unfocusedTextColor = Color.White,
+                                    focusedIndicatorColor = Color.Transparent,
+                                    unfocusedIndicatorColor = Color.Transparent
+                                ),
+                                shape = RoundedCornerShape(8.dp)
                             )
-                            itemName = ""
-                            servingSize = "100g"
-                            calories = ""
-                            protein = ""
-                            carbs = ""
-                            fats = ""
+                            TextField(
+                                value = servingSize,
+                                onValueChange = { servingSize = it },
+                                label = { Text("Serving") },
+                                placeholder = { Text("e.g. 100g") },
+                                modifier = Modifier.weight(1f),
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                                colors = TextFieldDefaults.colors(
+                                    focusedContainerColor = Color(0xFF2C2C2E),
+                                    unfocusedContainerColor = Color(0xFF2C2C2E),
+                                    focusedTextColor = Color.White,
+                                    unfocusedTextColor = Color.White,
+                                    focusedIndicatorColor = Color.Transparent,
+                                    unfocusedIndicatorColor = Color.Transparent
+                                ),
+                                shape = RoundedCornerShape(8.dp)
+                            )
                         }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = isFormValid
-                ) {
-                    Text("Add Label")
-                }
 
-                HorizontalDivider(color = Color(0xFF2C2C2E))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            TextField(
+                                value = calories,
+                                onValueChange = { if (it.isEmpty() || it.toFloatOrNull() != null) calories = it },
+                                label = { Text("Calories (kcal)") },
+                                modifier = Modifier.weight(1f),
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
+                                colors = TextFieldDefaults.colors(
+                                    focusedContainerColor = Color(0xFF2C2C2E),
+                                    unfocusedContainerColor = Color(0xFF2C2C2E),
+                                    focusedTextColor = Color.White,
+                                    unfocusedTextColor = Color.White,
+                                    focusedIndicatorColor = Color.Transparent,
+                                    unfocusedIndicatorColor = Color.Transparent
+                                ),
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                            TextField(
+                                value = protein,
+                                onValueChange = { if (it.isEmpty() || it.toFloatOrNull() != null) protein = it },
+                                label = { Text("Protein (g)") },
+                                modifier = Modifier.weight(1f),
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
+                                colors = TextFieldDefaults.colors(
+                                    focusedContainerColor = Color(0xFF2C2C2E),
+                                    unfocusedContainerColor = Color(0xFF2C2C2E),
+                                    focusedTextColor = Color.White,
+                                    unfocusedTextColor = Color.White,
+                                    focusedIndicatorColor = Color.Transparent,
+                                    unfocusedIndicatorColor = Color.Transparent
+                                ),
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                        }
 
-                LazyColumn(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(labels) { label ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(Color(0xFF2C2C2E), RoundedCornerShape(8.dp))
-                                .padding(12.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(label.itemName, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                                Text(label.labelInfo, color = Color.White, style = MaterialTheme.typography.bodySmall)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            TextField(
+                                value = carbs,
+                                onValueChange = { if (it.isEmpty() || it.toFloatOrNull() != null) carbs = it },
+                                label = { Text("Carbs (g)") },
+                                modifier = Modifier.weight(1f),
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
+                                colors = TextFieldDefaults.colors(
+                                    focusedContainerColor = Color(0xFF2C2C2E),
+                                    unfocusedContainerColor = Color(0xFF2C2C2E),
+                                    focusedTextColor = Color.White,
+                                    unfocusedTextColor = Color.White,
+                                    focusedIndicatorColor = Color.Transparent,
+                                    unfocusedIndicatorColor = Color.Transparent
+                                ),
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                            TextField(
+                                value = fats,
+                                onValueChange = { if (it.isEmpty() || it.toFloatOrNull() != null) fats = it },
+                                label = { Text("Fats (g)") },
+                                modifier = Modifier.weight(1f),
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
+                                colors = TextFieldDefaults.colors(
+                                    focusedContainerColor = Color(0xFF2C2C2E),
+                                    unfocusedContainerColor = Color(0xFF2C2C2E),
+                                    focusedTextColor = Color.White,
+                                    unfocusedTextColor = Color.White,
+                                    focusedIndicatorColor = Color.Transparent,
+                                    unfocusedIndicatorColor = Color.Transparent
+                                ),
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                        }
+
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            TextField(
+                                value = fibre,
+                                onValueChange = { if (it.isEmpty() || it.toFloatOrNull() != null) fibre = it },
+                                label = { Text("Fibre (g)") },
+                                modifier = Modifier.weight(1f),
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
+                                colors = TextFieldDefaults.colors(
+                                    focusedContainerColor = Color(0xFF2C2C2E),
+                                    unfocusedContainerColor = Color(0xFF2C2C2E),
+                                    focusedTextColor = Color.White,
+                                    unfocusedTextColor = Color.White,
+                                    focusedIndicatorColor = Color.Transparent,
+                                    unfocusedIndicatorColor = Color.Transparent
+                                ),
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                            TextField(
+                                value = refinedSugar,
+                                onValueChange = { if (it.isEmpty() || it.toFloatOrNull() != null) refinedSugar = it },
+                                label = { Text("Refined Sugar (g)") },
+                                modifier = Modifier.weight(1f),
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
+                                colors = TextFieldDefaults.colors(
+                                    focusedContainerColor = Color(0xFF2C2C2E),
+                                    unfocusedContainerColor = Color(0xFF2C2C2E),
+                                    focusedTextColor = Color.White,
+                                    unfocusedTextColor = Color.White,
+                                    focusedIndicatorColor = Color.Transparent,
+                                    unfocusedIndicatorColor = Color.Transparent
+                                ),
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                        }
+
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            TextField(
+                                value = vitaminB,
+                                onValueChange = { if (it.isEmpty() || it.toFloatOrNull() != null) vitaminB = it },
+                                label = { Text("Vit B (mg)") },
+                                modifier = Modifier.weight(1f),
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
+                                colors = TextFieldDefaults.colors(
+                                    focusedContainerColor = Color(0xFF2C2C2E),
+                                    unfocusedContainerColor = Color(0xFF2C2C2E),
+                                    focusedTextColor = Color.White,
+                                    unfocusedTextColor = Color.White,
+                                    focusedIndicatorColor = Color.Transparent,
+                                    unfocusedIndicatorColor = Color.Transparent
+                                ),
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                            TextField(
+                                value = vitaminD,
+                                onValueChange = { if (it.isEmpty() || it.toFloatOrNull() != null) vitaminD = it },
+                                label = { Text("Vit D (mcg)") },
+                                modifier = Modifier.weight(1f),
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
+                                colors = TextFieldDefaults.colors(
+                                    focusedContainerColor = Color(0xFF2C2C2E),
+                                    unfocusedContainerColor = Color(0xFF2C2C2E),
+                                    focusedTextColor = Color.White,
+                                    unfocusedTextColor = Color.White,
+                                    focusedIndicatorColor = Color.Transparent,
+                                    unfocusedIndicatorColor = Color.Transparent
+                                ),
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                        }
+
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            TextField(
+                                value = omega,
+                                onValueChange = { if (it.isEmpty() || it.toFloatOrNull() != null) omega = it },
+                                label = { Text("Omega (mg)") },
+                                modifier = Modifier.weight(1f),
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
+                                colors = TextFieldDefaults.colors(
+                                    focusedContainerColor = Color(0xFF2C2C2E),
+                                    unfocusedContainerColor = Color(0xFF2C2C2E),
+                                    focusedTextColor = Color.White,
+                                    unfocusedTextColor = Color.White,
+                                    focusedIndicatorColor = Color.Transparent,
+                                    unfocusedIndicatorColor = Color.Transparent
+                                ),
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                            Box(modifier = Modifier.weight(1f)) // Spacer
+                        }
+                    }
+
+                    Button(
+                        onClick = {
+                            coroutineScope.launch {
+                                FoodLabelRepository.saveLabel(
+                                    context,
+                                    itemName,
+                                    calories.toFloatOrNull() ?: 0f,
+                                    protein.toFloatOrNull() ?: 0f,
+                                    carbs.toFloatOrNull() ?: 0f,
+                                    fats.toFloatOrNull() ?: 0f,
+                                    fibre.toFloatOrNull() ?: 0f,
+                                    refinedSugar.toFloatOrNull() ?: 0f,
+                                    vitaminB.toFloatOrNull() ?: 0f,
+                                    vitaminD.toFloatOrNull() ?: 0f,
+                                    omega.toFloatOrNull() ?: 0f,
+                                    servingSize
+                                )
+                                itemName = ""
+                                servingSize = "100g"
+                                calories = ""
+                                protein = ""
+                                carbs = ""
+                                fats = ""
+                                fibre = ""
+                                refinedSugar = ""
+                                vitaminB = ""
+                                vitaminD = ""
+                                omega = ""
                             }
-                            IconButton(onClick = {
-                                coroutineScope.launch {
-                                    FoodLabelRepository.deleteLabel(context, label.itemName)
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = isFormValid
+                    ) {
+                        Text("Add Label")
+                    }
+
+                    HorizontalDivider(color = Color(0xFF2C2C2E))
+
+                    LazyColumn(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(labels) { label ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(Color(0xFF2C2C2E), RoundedCornerShape(8.dp))
+                                    .padding(12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(label.itemName, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                                    Text(label.labelInfo, color = Color.White, style = MaterialTheme.typography.bodySmall)
                                 }
-                            }) {
-                                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red, modifier = Modifier.size(20.dp))
+                                IconButton(onClick = {
+                                    coroutineScope.launch {
+                                        FoodLabelRepository.deleteLabel(context, label.itemName)
+                                    }
+                                }) {
+                                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red, modifier = Modifier.size(20.dp))
+                                }
                             }
                         }
                     }
-                }
 
-                TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.End)) {
-                    Text("Close", color = Color.White)
+                    TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.End)) {
+                        Text("Close", color = Color.White)
+                    }
                 }
-            }
         }
     }
 }
