@@ -4,33 +4,23 @@ GymBro is a modern, personal fitness tracking application built with Jetpack Com
 
 ## Latest Developments & Improvements
 
-### AI Trainer & Personalization
-- **AI Trainer Chat**: Integrated a sophisticated AI Chat interface powered by Google's LiteRT (formerly TensorFlow Lite). Users can interact with an AI trainer to get personalized workout advice, form tips, and nutrition guidance.
-- **Enhanced Macro Calculator**: Leverages the local AI model to provide precise macronutrient targets based on user-specific physique and fitness goals.
-- **Settings & Goals Persistence**: Added a robust settings management system using Jetpack DataStore to persist user preferences (units, themes) and personal metrics (height, weight, target weight, fitness goals).
+### Workout Tracker Overhaul
+- **Advanced State Management**: Introduced `WorkoutTrackerViewModel` to centralize workout logic and provide a reactive, lifecycle-aware tracking experience.
+- **Aggressive Persistence**: Real-time background saving of every set and rep. If the app is killed or the system restarts, your workout progress is restored exactly where you left off.
+- **Interactive Exercise Management**:
+    - **Drag-and-Drop**: Reorder exercises on the fly with long-press gestures.
+    - **Dynamic Swapping**: Instantly swap an exercise for a similar one without losing your place in the routine.
+- **Improved Timer Sync**: Better coordination between the UI and `WorkoutService` for accurate rest timers and total duration tracking.
 
-### Data Layer Refactoring
-- **Room Database Migration**: Completed migration from DataStore to a robust Room database with new DAOs (`ExerciseDao.kt`), converters, and entity definitions. This provides improved data integrity, complex querying, and faster performance.
-- **New Workout Service**: Implemented comprehensive background workout tracking service with foreground service support for uninterrupted logging sessions.
-- **FileProvider Integration**: Added secure file access via FileProvider for exporting workout data and sharing progress reports.
-- **Notification Permissions**: Added `POST_NOTIFICATIONS` permission to enable workout reminders and session completion alerts.
+### AI Enhancements
+- **Streaming Chat**: Experience instant feedback with streaming AI responses in the Trainer Chat interface.
+- **Hardware Acceleration**: Optimized LiteRT (formerly TensorFlow Lite) integration with GPU acceleration support for faster inference and lower battery consumption.
+- **Intelligent Resource Management**: The AI engine now automatically releases resources when the app is in the background or when the device is under high memory pressure, ensuring system stability.
 
-### Workout Persistence Fix
-- **Active Workout Restoration**: Fixed issue where closing the app during an active workout would lose all tracking data. The app now properly saves timer state (elapsed seconds, workout title) alongside exercise data in real-time.
-- **Service Restoration**: When reopening the app and tapping the `WorkoutMiniCard`, the `WorkoutService` restores the timer from the saved position and continues counting.
-- **Data Integrity**: In-progress workout data is cleared properly when a workout is completed, ensuring clean state between sessions.
-
-### UI/UX & Input Stability
-- **Refined Numeric Inputs**: Implemented local `String` state management for Weight, Reps, and RIR fields. This eliminates "0.0" ghosting and flickering during active editing, providing a smooth input experience.
-- **Global Focus Management**: Integrated a global focus removal system in `MainActivity`. Tapping outside any input field or closing the keyboard automatically clears focus, preventing accidental edits.
-- **Professional Instruction Formatting**: Added an intelligent parsing engine for exercise "How-to" instructions. It automatically converts raw blocks of text or inconsistently numbered lists into clean, professional, and properly enumerated step-by-step guides.
-- **New Mini Card Component**: Introduced `WorkoutMiniCard` for compact workout summary displays in lists and overviews.
-
-### Data & Performance
-- **Real-time Analytics**: Replaced mock data in the `ExerciseDetailScreen` with live workout history. Users can now see their actual **Weight Trends** and **Training Frequency** charts based on logged sessions.
-- **Dynamic Logic**: Implemented conditional rendering for exercise charts—if no workouts are logged for a specific exercise, the trends section is hidden to maintain a clean UI.
-- **Extended Default Routines**: Added comprehensive default routine templates for diverse training styles.
-- **Exercise ID Normalization**: Updated RoutineRepository to use exercise IDs that exist in the ExerciseRepository. This ensures consistency between the exercise database and workout routines.
+### UI/UX & System Stability
+- **Global Focus Management**: Automatic clearing of input focus when the keyboard is hidden, preventing accidental edits.
+- **Enhanced Initialization Flow**: Real-time progress tracking for AI model initialization and assets preparation.
+- **Lifecycle Awareness**: The app now intelligently monitors foreground/background transitions to optimize performance and battery life.
 
 
 ## Features
@@ -101,6 +91,8 @@ app/
 │   │   │   ├── SettingsRepository.kt # User preferences & goals DataStore
 │   │   │   ├── Converters.kt     # Room type converters
 │   │   │   └── WorkoutService.kt  # Background workout tracking
+│   │   ├── viewmodel/     # ViewModel implementations
+│   │   │   └── WorkoutTrackerViewModel.kt # State management for workout tracking
 │   │   ├── model/         # Data entities (Exercise, Routine, Workout)
 │   │   ├── ui/
 │   │   │   ├── navigation/ # Compose Navigation routes

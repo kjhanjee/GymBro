@@ -2,6 +2,29 @@
 
 All notable changes to GymLogger.
 
+### Workout Tracker Overhaul & AI Enhancements (May 16, 2026)
+
+**Workout Tracker:**
+- **ViewModel Integration**: Migrated workout tracking logic to `WorkoutTrackerViewModel` for robust state management.
+- **Aggressive Persistence**: Implemented real-time background saving of in-progress workouts, ensuring no data loss on app death or restart.
+- **Drag-and-Drop Reordering**: Added interactive exercise reordering within active sessions with haptic feedback and auto-scrolling.
+- **Exercise Swapping**: Users can now easily swap an exercise for another while a workout is in progress.
+- **Unified Sync**: Seamless synchronization of workout stats and timers with `WorkoutService`.
+
+**AI Subsystem:**
+- **Streaming Responses**: Enabled real-time text generation in AI Trainer Chat for a more responsive experience.
+- **GPU Acceleration**: Enhanced LiteRT initialization to prioritize GPU usage with automatic CPU fallback.
+- **Auto-Resource Management**: 
+    - Implemented a 5-minute background auto-release timer for the AI engine.
+    - Added high memory pressure detection to proactively release AI resources.
+- **Conversation Summarization**: Added capability to generate concise summaries of chat history with the AI Trainer.
+
+**Platform & UI/UX:**
+- **App Lifecycle Tracking**: Integrated `ProcessLifecycleOwner` to optimize resource usage based on app visibility.
+- **Improved Initialization**: Added a detailed progress overlay with model download percentage tracking.
+- **Focus Management**: Implemented automatic focus clearing when the keyboard is dismissed or when clicking outside inputs.
+- **State Restoration**: Enhanced `MainActivity` to restore active workout services on startup if a session was in progress.
+
 ### AI Trainer & Personalization (May 9, 2026)
 
 **New Features:**
