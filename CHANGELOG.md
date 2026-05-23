@@ -2,6 +2,26 @@
 
 All notable changes to GymLogger.
 
+### AI Refinements & Data Portability (May 23, 2026)
+
+**AI & Nutrition:**
+- **Macro Calculator Improvements**: Refined the AI logic for macro calculations to provide more consistent and accurate results.
+- **AI Trainer Chat UI**: Enhanced the chat interface for better message readability and smoother interaction.
+- **Meal Logger Updates**: Improved state management and UI feedback when logging meals.
+
+**Data Management:**
+- **CSV Export**: Introduced functionality to export workout history to CSV files, enabling users to analyze their data externally.
+- **Repository Enhancements**: Added support for retrieving workout data specifically for export in `RoutineRepository`.
+
+**UI/UX Improvements:**
+- **Recent Workouts Screen**: Updated the list view to better display historical data.
+- **Workout Detail Screen**: Enhanced the detail view for completed workouts with clearer stats and notes.
+- **Optimizer Screens**: Refined the UI for Diet and Workout optimizers for better clarity.
+
+**Technical Updates:**
+- **Build Configuration**: Updated `build.gradle.kts` dependencies and configuration.
+- **Unit Testing**: Added `CsvExporterTest` to ensure reliable data export functionality.
+
 ### Workout Tracker Overhaul & AI Enhancements (May 16, 2026)
 
 **Workout Tracker:**
