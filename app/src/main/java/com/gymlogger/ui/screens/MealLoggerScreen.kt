@@ -28,7 +28,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import com.gymlogger.util.CsvExporter
+import java.io.OutputStreamWriter
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import com.gymlogger.ai.MacroCalculator
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import com.gymlogger.data.MealRepository
 import com.gymlogger.data.FoodLabelRepository
 import com.gymlogger.model.Meal
@@ -49,6 +58,28 @@ fun MealLoggerScreen(onNavigateBack: () -> Unit) {
     var showLabelDialog by remember { mutableStateOf(false) }
     var isSaving by remember { mutableStateOf(false) }
     var isInitializingAi by remember { mutableStateOf(false) }
+
+    val createDocumentLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("text/csv")
+    ) { uri ->
+        uri?.let {
+            coroutineScope.launch {
+                val latestMeals = MealRepository.meals.value
+                withContext(Dispatchers.IO) {
+                    try {
+                        context.contentResolver.openOutputStream(it)?.use { outputStream ->
+                            OutputStreamWriter(outputStream, java.nio.charset.StandardCharsets.UTF_8).use { writer ->
+                                writer.write(CsvExporter.exportMealsToCsv(latestMeals))
+                                writer.flush()
+                            }
+                        }
+                    } catch (e: Exception) {
+                        android.util.Log.e("MealLoggerScreen", "Failed to save CSV", e)
+                    }
+                }
+            }
+        }
+    }
 
     val groupedMeals = remember(meals) {
         meals.groupBy {
@@ -93,6 +124,16 @@ fun MealLoggerScreen(onNavigateBack: () -> Unit) {
                 subtitle = if (isInitializingAi) "Initializing AI Engine..." else null,
                 onNavigateBack = onNavigateBack,
                 actions = {
+                    IconButton(onClick = { 
+                        val fileName = "meal_logs_${SimpleDateFormat("yyyyMMdd_HHmm", Locale.getDefault()).format(Date())}.csv"
+                        createDocumentLauncher.launch(fileName)
+                    }) {
+                        Icon(
+                            imageVector = Icons.Default.Download,
+                            contentDescription = "Download CSV",
+                            tint = Color.White
+                        )
+                    }
                     IconButton(onClick = { showLabelDialog = true }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.Label,

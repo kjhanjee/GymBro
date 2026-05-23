@@ -563,6 +563,11 @@ object RoutineRepository {
         completeWorkout(context, workout)
     }
 
+    suspend fun deleteWorkout(context: Context, workoutId: Long) {
+        _workouts.update { current -> current.filterNot { it.id == workoutId } }
+        saveWorkouts(context)
+    }
+
     fun getWorkoutsByDateRange(startDate: Long, endDate: Long): Flow<List<Workout>> {
         return flow {
             val start = startDate

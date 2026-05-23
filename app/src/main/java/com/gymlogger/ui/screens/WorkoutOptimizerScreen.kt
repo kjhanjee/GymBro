@@ -303,7 +303,8 @@ fun WorkoutOptimizerScreen(onNavigateBack: () -> Unit) {
                                 }.joinToString("\n")
 
                             val prompt = """
-                                System: You are "GymBro AI", a world-class Strength and Conditioning Coach.
+                                <|turn>system
+                                You are "GymBro AI", a world-class Strength and Conditioning Coach.
                                 Your mission is to design a high-performance workout routine tailored to the user's specific goals and equipment.
                                 
                                 CONTEXT:
@@ -342,6 +343,11 @@ fun WorkoutOptimizerScreen(onNavigateBack: () -> Unit) {
                                 }
                                 
                                 CRITICAL: "reps" must be a STRING. "weight" must be a FLOAT. "rir" must be an INTEGER or null.
+                                <|think|><turn|>
+                                <|turn>user
+                                Optimize my workout for ${targetBodyPart.name} with goal: $trainingGoal.
+                                <turn|>
+                                <|turn>model
                             """.trimIndent()
 
                             val response = MacroCalculator.generateResponse(prompt)

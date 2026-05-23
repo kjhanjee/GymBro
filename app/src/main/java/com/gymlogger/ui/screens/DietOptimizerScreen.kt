@@ -292,7 +292,8 @@ fun DietOptimizerScreen(onNavigateBack: () -> Unit) {
                             }
 
                             val prompt = """
-                                System: You are an expert Dietician. Based on the user's details, provide a daily calorie and macro requirement estimate (Protein, Carbs, Fats) and a list of optimized meal suggestions (including snacks if necessary to hit the targets).
+                                <|turn>system
+                                You are an expert Dietician. Based on the user's details, provide a daily calorie and macro requirement estimate (Protein, Carbs, Fats) and a list of optimized meal suggestions (including snacks if necessary to hit the targets).
                                 The sum of the Macros and Calories for all suggested meals/snacks must closely match the 'target macros' and 'estimated daily calories' you provide.
                                 Return the response ONLY as a JSON object with this exact structure:
                                 {
@@ -308,7 +309,8 @@ fun DietOptimizerScreen(onNavigateBack: () -> Unit) {
                                     }
                                   ]
                                 }
-                                
+                                <|think|><turn|>
+                                <|turn>user
                                 User Details:
                                 Height: $currentHeight cm
                                 Weight: $currentWeight kg
@@ -316,6 +318,8 @@ fun DietOptimizerScreen(onNavigateBack: () -> Unit) {
                                 Optimization Goal: $optimizationGoal
                                 Restrictions: $restrictions
                                 Meal History: $history
+                                <turn|>
+                                <|turn>model
                             """.trimIndent()
 
                             val response = MacroCalculator.generateResponse(prompt)

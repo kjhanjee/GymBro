@@ -13,13 +13,21 @@ import com.google.ai.edge.litertlm.SamplerConfig
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.io.File
 import java.io.FileOutputStream
 import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicBoolean
 
 object MacroCalculator {
     private const val TAG = "MacroCalculator"
     private const val MODEL_FILE_NAME = "gemma-4-E2B-it.litertlm"
+    
+    sealed class AiStreamItem {
+        data class Thought(val delta: String) : AiStreamItem()
+        data class Text(val delta: String) : AiStreamItem()
+    }
     
     private var engine: Engine? = null
     
@@ -32,12 +40,14 @@ object MacroCalculator {
     private val _downloadProgress = MutableStateFlow<Float?>(null)
     val downloadProgress: StateFlow<Float?> = _downloadProgress.asStateFlow()
 
-    // Use a dedicated single thread with lower priority to reduce impact on the system
+    // Use a dedicated single thread for ALL AI operations to prevent native concurrency crashes
     private val aiExecutor = Executors.newSingleThreadExecutor { r ->
         Thread(r, "AI-Inference-Thread").apply {
-            priority = Thread.MIN_PRIORITY
+            priority = Thread.MAX_PRIORITY // Give it priority to finish prefill quickly
         }
     }.asCoroutineDispatcher()
+
+    private val isProcessing = AtomicBoolean(false)
 
     suspend fun prepareModel(context: Context): Boolean = withContext(Dispatchers.IO) {
         val appContext = context.applicationContext
@@ -152,73 +162,128 @@ object MacroCalculator {
     }
 
     suspend fun generateResponse(prompt: String): String? = withContext(aiExecutor) {
-        val currentEngine = engine
-        if (currentEngine == null) {
-            Log.w(TAG, "generateResponse: engine is null")
+        if (isProcessing.getAndSet(true)) {
+            Log.w(TAG, "Already processing an AI request, skipping.")
             return@withContext null
         }
-
+        
         try {
-            Log.d(TAG, "Generating response for prompt on thread: ${Thread.currentThread().name}")
+            val currentEngine = engine ?: return@withContext null
+            Log.d(TAG, "Generating response for prompt: $prompt")
+            
             val conversationConfig = ConversationConfig(
                 samplerConfig = SamplerConfig(topK = 64, topP = 0.95, temperature = 1.0)
             )
             val conversation = currentEngine.createConversation(conversationConfig)
-            val extraContext = mapOf("max_tokens" to 128000)
-            val response = conversation.sendMessage(prompt, extraContext)
+            val response = conversation.sendMessage(prompt, mapOf("max_tokens" to 128000))
             val fullResponse = (response.contents.contents.firstOrNull() as? Content.Text)?.text ?: ""
             conversation.close()
-            fullResponse
+            
+            Log.d(TAG, "Full AI Response: $fullResponse")
+            
+            // Robust cleaning: remove anything before and including <channel|>
+            val cleaned = if (fullResponse.contains("<channel|>")) {
+                fullResponse.substringAfter("<channel|>").trim()
+            } else {
+                // If it produced thoughts but didn't end properly, or produced no thoughts
+                fullResponse.replace("<|channel>thought", "").trim()
+            }
+            cleaned
         } catch (e: Exception) {
             Log.e(TAG, "Inference failed", e)
             null
+        } finally {
+            isProcessing.set(false)
         }
     }
 
-    fun generateResponseStream(prompt: String): Flow<String> = callbackFlow {
-        val currentEngine = engine
-        if (currentEngine == null) {
-            close(IllegalStateException("Engine not initialized"))
-            return@callbackFlow
-        }
-        val conversationConfig = ConversationConfig(
-            samplerConfig = SamplerConfig(topK = 64, topP = 0.95, temperature = 1.0)
-        )
-        val conversation = currentEngine.createConversation(conversationConfig)
+    private fun streamFromConversation(
+        conversation: com.google.ai.edge.litertlm.Conversation,
+        prompt: String
+    ): Flow<AiStreamItem> = callbackFlow {
+        Log.d(TAG, ">>> SENDING PROMPT TO MODEL:\n$prompt\n<<< END PROMPT")
         try {
-            var lastText = ""
-            val extraContext = mapOf(
-                "max_tokens" to 128000,
-                "max_output_tokens" to 128000
-            )
+            var lastYieldedThought = ""
+            var lastYieldedText = ""
+            
             conversation.sendMessageAsync(prompt, object : com.google.ai.edge.litertlm.MessageCallback {
                 override fun onMessage(message: com.google.ai.edge.litertlm.Message) {
                     val fullText = (message.contents.contents.firstOrNull() as? Content.Text)?.text ?: ""
-                    val delta = if (fullText.startsWith(lastText)) {
-                        fullText.substring(lastText.length)
-                    } else {
-                        fullText
+                    Log.d(TAG, "RAW MODEL OUTPUT CHUNK: $fullText")
+                    
+                    // 1. Handle Thoughts: Everything between <|channel>thought and <channel|>
+                    if (fullText.contains("<|channel>thought")) {
+                        val thoughtPart = fullText.substringAfter("<|channel>thought").substringBefore("<channel|>")
+                        val delta = if (thoughtPart.startsWith(lastYieldedThought)) {
+                            thoughtPart.substring(lastYieldedThought.length)
+                        } else {
+                            thoughtPart
+                        }
+                        
+                        if (delta.isNotEmpty()) {
+                            Log.d(TAG, "THOUGHT DELTA: $delta")
+                            trySend(AiStreamItem.Thought(delta))
+                            lastYieldedThought = thoughtPart
+                        }
                     }
+                    
+                    // 2. Handle Text: Everything after <channel|> OR everything if no thought tag seen
+                    val textPart = when {
+                        fullText.contains("<channel|>") -> {
+                            fullText.substringAfter("<channel|>")
+                        }
+                        !fullText.contains("<|channel>thought") -> {
+                            // Model isn't using thinking channel or hasn't started it
+                            fullText
+                        }
+                        else -> "" // Inside thought channel, no text to yield
+                    }
+
+                    val delta = if (textPart.startsWith(lastYieldedText)) {
+                        textPart.substring(lastYieldedText.length)
+                    } else {
+                        textPart
+                    }
+
                     if (delta.isNotEmpty()) {
-                        trySend(delta)
-                        lastText = fullText
+                        Log.d(TAG, "TEXT DELTA: $delta")
+                        trySend(AiStreamItem.Text(delta))
+                        lastYieldedText = textPart
                     }
                 }
 
                 override fun onDone() {
+                    Log.d(TAG, "MODEL STREAM DONE")
                     close()
                 }
-
                 override fun onError(throwable: Throwable) {
+                    Log.e(TAG, "MODEL STREAM ERROR", throwable)
                     close(throwable)
                 }
-            }, extraContext)
+            }, mapOf("max_tokens" to 128000, "max_output_tokens" to 128000))
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to start sendMessageAsync", e)
             close(e)
         }
+        awaitClose { }
+    }
 
-        awaitClose {
-            conversation.close()
+    fun generateResponseStream(prompt: String): Flow<String> = channelFlow {
+        withContext(aiExecutor) {
+            if (isProcessing.getAndSet(true)) {
+                Log.w(TAG, "Already processing, skipping stream.")
+                return@withContext
+            }
+            try {
+                val currentEngine = engine ?: return@withContext
+                val conversation = currentEngine.createConversation(ConversationConfig())
+                streamFromConversation(conversation, prompt).collect { item ->
+                    if (item is AiStreamItem.Text) send(item.delta)
+                }
+                conversation.close()
+            } finally {
+                isProcessing.set(false)
+            }
         }
     }.flowOn(aiExecutor)
 
@@ -229,8 +294,7 @@ object MacroCalculator {
     fun scheduleRelease(context: Context) {
         releaseJob?.cancel()
         releaseJob = scope.launch {
-            delay(5 * 60 * 1000) // 5 minutes
-            Log.d(TAG, "5 minutes in background - auto-releasing AI model")
+            delay(5 * 60 * 1000)
             release()
         }
     }
@@ -246,96 +310,72 @@ object MacroCalculator {
         Log.d(TAG, "Chat conversation reset")
     }
 
-    fun sendChatMessageStream(prompt: String): Flow<String> = callbackFlow {
-        val currentEngine = engine
-        if (currentEngine == null) {
-            close(IllegalStateException("Engine not initialized"))
-            return@callbackFlow
-        }
-        
-        if (chatConversation == null) {
-            val conversationConfig = ConversationConfig(
-                samplerConfig = SamplerConfig(topK = 64, topP = 0.95, temperature = 1.0)
-            )
-            chatConversation = currentEngine.createConversation(conversationConfig)
-        }
-        val conversation = chatConversation!!
-        
-        try {
-            var lastText = ""
-            val extraContext = mapOf(
-                "max_tokens" to 128000,
-                "max_output_tokens" to 128000
-            )
-            conversation.sendMessageAsync(prompt, object : com.google.ai.edge.litertlm.MessageCallback {
-                override fun onMessage(message: com.google.ai.edge.litertlm.Message) {
-                    val fullText = (message.contents.contents.firstOrNull() as? Content.Text)?.text ?: ""
-                    val delta = if (fullText.startsWith(lastText)) {
-                        fullText.substring(lastText.length)
-                    } else {
-                        fullText
-                    }
-                    if (delta.isNotEmpty()) {
-                        trySend(delta)
-                        lastText = fullText
-                    }
+    fun sendChatMessageStream(prompt: String): Flow<AiStreamItem> = channelFlow {
+        withContext(aiExecutor) {
+            if (isProcessing.getAndSet(true)) {
+                Log.w(TAG, "Already processing, skipping chat stream.")
+                return@withContext
+            }
+            try {
+                val currentEngine = engine ?: return@withContext
+                if (chatConversation == null) {
+                    chatConversation = currentEngine.createConversation(ConversationConfig())
                 }
-
-                override fun onDone() {
-                    close()
-                }
-
-                override fun onError(throwable: Throwable) {
-                    close(throwable)
-                }
-            }, extraContext)
-        } catch (e: Exception) {
-            close(e)
-        }
-
-        awaitClose {
-            // Do not close the conversation here to maintain state
+                streamFromConversation(chatConversation!!, prompt).collect { send(it) }
+            } finally {
+                isProcessing.set(false)
+            }
         }
     }.flowOn(aiExecutor)
 
     suspend fun summarizeMessages(conversationText: String): String? = withContext(aiExecutor) {
-        val currentEngine = engine ?: return@withContext null
-        val prompt = """
-            <|turn>system
-            Summarize the following conversation between a user and an AI Gym Instructor. 
-            Be concise and capture the key points, progress, and agreed-upon plans.
-            <turn|>
-            <|turn>user
-            $conversationText
-            <turn|>
-            <|turn>model
-        """.trimIndent()
-
+        if (isProcessing.getAndSet(true)) return@withContext null
         try {
-            val conversationConfig = ConversationConfig(
-                samplerConfig = SamplerConfig(topK = 64, topP = 0.95, temperature = 1.0)
-            )
-            val conversation = currentEngine.createConversation(conversationConfig)
-            val extraContext = mapOf("max_tokens" to 128000)
-            val response = conversation.sendMessage(prompt, extraContext)
-            val summary = (response.contents.contents.firstOrNull() as? Content.Text)?.text ?: ""
+            val currentEngine = engine ?: return@withContext null
+            val prompt = """
+                <|turn>system
+                Summarize the following conversation between a user and an AI Gym Instructor. 
+                Be concise and capture the key points, progress, and agreed-upon plans.
+                <|think|><turn|>
+                <|turn>user
+                $conversationText
+                <turn|>
+                <|turn>model
+            """.trimIndent()
+
+            val conversation = currentEngine.createConversation(ConversationConfig())
+            val response = conversation.sendMessage(prompt, mapOf("max_tokens" to 128000))
+            val fullResponse = (response.contents.contents.firstOrNull() as? Content.Text)?.text ?: ""
             conversation.close()
-            summary
+            
+            // Extract content after thought tag if present
+            if (fullResponse.contains("<channel|>")) {
+                fullResponse.substringAfter("<channel|>").trim()
+            } else {
+                fullResponse.replace("<|channel>thought", "").trim()
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Summarization failed", e)
             null
+        } finally {
+            isProcessing.set(false)
         }
     }
 
     suspend fun calculateMacros(mealDescription: String, labelsInfo: String): String? {
         val prompt = """
-            System: You are an expert Dietician. You need to analyze the meals provided by the user and provide the output in the below JSON format: 
+            <|turn>system
+            You are an expert Dietician. You need to analyze the meals provided by the user and provide the output in the below JSON format: 
             {"calories": float, "protein": float, "carbs": float, "fats": float, "fibre": float, "sugar": float, "vitaminB": float, "vitaminD": float, "omega": float}
             Do not include any explanation or markdown. 
             Units: calories in kcal, protein/carbs/fats/fibre/sugar in grams (sugar field refers to total refined sugar), vitaminB in mg, vitaminD in mcg, omega in mg.
             Use the below label information for analyzing the meals provided by the user, if the corresponding items are present in the meal logged: 
             $labelsInfo
-            User: Analyze this meal: $mealDescription
+            <|think|><turn|>
+            <|turn>user
+            Analyze this meal: $mealDescription
+            <turn|>
+            <|turn>model
         """.trimIndent()
         
         return generateResponse(prompt)

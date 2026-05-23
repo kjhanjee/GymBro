@@ -5,11 +5,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -23,6 +22,7 @@ import com.gymlogger.data.Workout
 import com.gymlogger.ui.components.GymBroTopAppBar
 import com.gymlogger.model.WorkoutSet
 import com.gymlogger.util.UnitConverter
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -36,6 +36,9 @@ fun WorkoutDetailScreen(
     val context = LocalContext.current
     val weightUnit by SettingsRepository.getWeightUnit(context).collectAsState(initial = SettingsRepository.WeightUnit.LBS)
     val dateFormatter = SimpleDateFormat("EEEE, MMM dd, yyyy", Locale.getDefault())
+    val scope = rememberCoroutineScope()
+    
+    var showDeleteDialog by remember { mutableStateOf(false) }
 
     if (workout == null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -44,12 +47,45 @@ fun WorkoutDetailScreen(
         return
     }
 
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Delete Workout Log?") },
+            text = { Text("Are you sure you want to remove this workout? It will be permanently deleted and excluded from your statistics.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        scope.launch {
+                            RoutineRepository.deleteWorkout(context, workout.id)
+                            onNavigateBack()
+                        }
+                        showDeleteDialog = false
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = Color.Red)
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Cancel", color = Color.White)
+                }
+            },
+            containerColor = Color(0xFF1C1C1E),
+            titleContentColor = Color.White,
+            textContentColor = Color(0xFF8E8E93)
+        )
+    }
+
     Scaffold(
         topBar = {
             GymBroTopAppBar(
                 title = workout.routine.name,
                 onNavigateBack = onNavigateBack,
                 actions = {
+                    IconButton(onClick = { showDeleteDialog = true }) {
+                        Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red)
+                    }
                     IconButton(onClick = {
                         val shareIntent = Intent().apply {
                             action = Intent.ACTION_SEND

@@ -6,21 +6,22 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gymlogger.data.RoutineRepository
 import com.gymlogger.data.Workout
 import com.gymlogger.ui.components.GymBroTopAppBar
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -32,6 +33,41 @@ fun RecentWorkoutsScreen(
 ) {
     val workouts by RoutineRepository.completedWorkouts.collectAsState()
     val dateFormatter = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    
+    var workoutToDelete by remember { mutableStateOf<Workout?>(null) }
+
+    if (workoutToDelete != null) {
+        AlertDialog(
+            onDismissRequest = { workoutToDelete = null },
+            title = { Text("Delete Workout Log?") },
+            text = { Text("Are you sure you want to remove this workout? It will be permanently deleted and excluded from your statistics.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        workoutToDelete?.let { workout ->
+                            scope.launch {
+                                RoutineRepository.deleteWorkout(context, workout.id)
+                            }
+                        }
+                        workoutToDelete = null
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = Color.Red)
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { workoutToDelete = null }) {
+                    Text("Cancel", color = Color.White)
+                }
+            },
+            containerColor = Color(0xFF1C1C1E),
+            titleContentColor = Color.White,
+            textContentColor = Color(0xFF8E8E93)
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -67,7 +103,8 @@ fun RecentWorkoutsScreen(
                         name = workout.routine.name,
                         date = dateFormatter.format(Date(workout.date)),
                         sets = workout.sets.size,
-                        onClick = { onNavigateToWorkoutDetail(workout.id) }
+                        onClick = { onNavigateToWorkoutDetail(workout.id) },
+                        onDelete = { workoutToDelete = workout }
                     )
                 }
             }
@@ -80,7 +117,8 @@ fun WorkoutListItem(
     name: String,
     date: String,
     sets: Int,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onDelete: () -> Unit
 ) {
     Card(
         modifier = Modifier
@@ -122,6 +160,14 @@ fun WorkoutListItem(
                 fontSize = 14.sp,
                 color = Color(0xFF8E8E93)
             )
+            Spacer(modifier = Modifier.width(8.dp))
+            IconButton(onClick = onDelete) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = "Delete Workout",
+                    tint = Color(0xFF8E8E93)
+                )
+            }
         }
     }
 }

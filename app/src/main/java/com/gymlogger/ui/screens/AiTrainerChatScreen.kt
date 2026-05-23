@@ -1,5 +1,6 @@
 package com.gymlogger.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -11,6 +12,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.snapshots.SnapshotStateList
@@ -22,6 +25,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.withStyle
@@ -48,7 +52,8 @@ enum class ChatRole {
 @Serializable
 data class ChatMessage(
     val text: String,
-    val role: ChatRole
+    val role: ChatRole,
+    val thought: String = ""
 ) {
     val isUser: Boolean get() = role == ChatRole.USER
 }
@@ -152,8 +157,8 @@ fun AiTrainerChatScreen(onNavigateBack: () -> Unit) {
             My Current Schedule (with exercises):
             $currentSchedule
 
-            My Objective: $objectiveJson<turn|>
-        """.trimIndent()
+            My Objective: $objectiveJson
+            <|think|><turn|>""".trimIndent()
     }
 
     suspend fun compactMessages(
@@ -218,21 +223,26 @@ fun AiTrainerChatScreen(onNavigateBack: () -> Unit) {
                 val systemText = messages.first { it.role == ChatRole.SYSTEM }.text
                 "$systemText\n<|turn>user\n$userText<turn|>\n<|turn>model"
             } else {
-                """
-                <|turn>user
-                $userText<turn|>
-                <|turn>model
-                """.trimIndent()
+                "<|turn>user\n$userText<turn|>\n<|turn>model"
             }
 
             val aiMessage = ChatMessage("", ChatRole.AI)
             messages.add(aiMessage)
             val aiMessageIndex = messages.size - 1
             var responseText = ""
+            var responseThought = ""
 
-            MacroCalculator.sendChatMessageStream(prompt).collect { delta ->
-                responseText += delta
-                messages[aiMessageIndex] = aiMessage.copy(text = responseText)
+            MacroCalculator.sendChatMessageStream(prompt).collect { item ->
+                when (item) {
+                    is MacroCalculator.AiStreamItem.Thought -> {
+                        responseThought += item.delta
+                        messages[aiMessageIndex] = aiMessage.copy(text = responseText, thought = responseThought)
+                    }
+                    is MacroCalculator.AiStreamItem.Text -> {
+                        responseText += item.delta
+                        messages[aiMessageIndex] = aiMessage.copy(text = responseText, thought = responseThought)
+                    }
+                }
                 isThinking = false
                 
                 // Keep scrolling as text comes in
@@ -261,7 +271,24 @@ fun AiTrainerChatScreen(onNavigateBack: () -> Unit) {
         topBar = {
             GymBroTopAppBar(
                 title = "AI Gym Instructor",
-                onNavigateBack = onNavigateBack
+                onNavigateBack = onNavigateBack,
+                actions = {
+                    IconButton(
+                        onClick = {
+                            messages.clear()
+                            MacroCalculator.startChat()
+                            scope.launch {
+                                SettingsRepository.setChatHistory(context, "")
+                            }
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.DeleteSweep,
+                            contentDescription = "New Chat",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
             )
         },
         containerColor = Color.Black
@@ -433,27 +460,70 @@ fun AiTrainerChatScreen(onNavigateBack: () -> Unit) {
 
 @Composable
 fun ChatBubble(message: ChatMessage) {
-    val alignment = if (message.role == ChatRole.USER) Alignment.CenterEnd else Alignment.CenterStart
+    val horizontalAlignment = if (message.role == ChatRole.USER) Alignment.End else Alignment.Start
     val bgColor = if (message.role == ChatRole.USER) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
     val textColor = if (message.role == ChatRole.USER) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondary
 
-    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = alignment) {
-        Surface(
-            color = bgColor,
-            shape = RoundedCornerShape(
-                topStart = 16.dp,
-                topEnd = 16.dp,
-                bottomStart = if (message.role == ChatRole.USER) 16.dp else 0.dp,
-                bottomEnd = if (message.role == ChatRole.USER) 0.dp else 16.dp
-            ),
-            modifier = Modifier.widthIn(max = 300.dp)
-        ) {
-            MarkdownText(
-                text = message.text,
-                modifier = Modifier.padding(12.dp),
-                color = textColor,
-                fontSize = 15.sp
-            )
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = horizontalAlignment
+    ) {
+        if (message.role == ChatRole.AI && message.thought.isNotEmpty()) {
+            Surface(
+                color = Color(0xFF1C1C1E),
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, Color(0xFF3A3A3C)),
+                modifier = Modifier
+                    .padding(bottom = 8.dp)
+                    .widthIn(max = 280.dp)
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.AutoAwesome,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "AI THOUGHTS",
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = message.thought,
+                        color = Color.LightGray.copy(alpha = 0.9f),
+                        fontSize = 14.sp,
+                        fontStyle = FontStyle.Italic,
+                        lineHeight = 20.sp
+                    )
+                }
+            }
+        }
+
+        if (message.text.isNotEmpty()) {
+            Surface(
+                color = bgColor,
+                shape = RoundedCornerShape(
+                    topStart = 16.dp,
+                    topEnd = 16.dp,
+                    bottomStart = if (message.role == ChatRole.USER) 16.dp else 0.dp,
+                    bottomEnd = if (message.role == ChatRole.USER) 0.dp else 16.dp
+                ),
+                modifier = Modifier.widthIn(max = 300.dp)
+            ) {
+                MarkdownText(
+                    text = message.text,
+                    modifier = Modifier.padding(12.dp),
+                    color = textColor,
+                    fontSize = 15.sp
+                )
+            }
         }
     }
 }
