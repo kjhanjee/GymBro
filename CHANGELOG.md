@@ -2,6 +2,29 @@
 
 All notable changes to GymLogger.
 
+### App Experience & Advanced Analytics (June 14, 2026)
+
+**Statistics & Analytics:**
+- **Advanced Exercise Stats**: Introduced an IQR (Interquartile Range) filter for "All-Time Averages" to remove outliers and provide more accurate progress tracking.
+- **Workout Summary Card**: Added a dedicated shareable card in Statistics showing a detailed breakdown of the most recent workout, including per-set reps, weight, and RIR.
+- **Micronutrient Analytics**: Added a new section for tracking weekly averages of 10 different micronutrients with meal-type breakdowns.
+
+**AI & Nutrition:**
+- **Expanded Micronutrient Estimation**: The AI now estimates Vitamin C, Iron, Potassium, Magnesium, and Sodium from meal descriptions.
+- **Meal Data Portability**: Added CSV export functionality specifically for meal logs.
+- **AI Lifecycle Management**: 
+    - Added a manual AI engine restart/refresh button in the Meal Logger.
+    - Improved UI with "Warming up Gemma 2B" status indicators during engine initialization.
+    - Support for displaying AI "thought" process during streaming responses.
+
+**Workout Tracking Improvements:**
+- **Rest Time Tracking**: Added a `restTime` field to `WorkoutSet` to track recovery periods between sets.
+- **Intelligent Set Classification**: Implemented automatic `SetType` assignment (Warmup, Normal, Failure) based on the recorded Reps In Reserve (RIR).
+
+**Technical Updates:**
+- **Unit Testing**: Added comprehensive unit tests for `MealMacros` and `WorkoutSet` to ensure data integrity and logic correctness.
+- **UI Refinements**: Updated `MealLoggerScreen` and `StatisticsScreen` with improved layouts for the new nutritional data and analytics.
+
 ### AI Refinements & Data Portability (May 23, 2026)
 
 **AI & Nutrition:**
