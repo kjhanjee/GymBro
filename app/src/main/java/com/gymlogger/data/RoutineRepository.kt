@@ -35,13 +35,13 @@ object RoutineRepository {
                     Routine.RoutineExercise.SetConfig(1, WorkoutSet.SetType.NORMAL, 10, 15f, 2, 120),
                     Routine.RoutineExercise.SetConfig(2, WorkoutSet.SetType.NORMAL, 8, 15f, 2, 120),
                     Routine.RoutineExercise.SetConfig(3, WorkoutSet.SetType.NORMAL, 8, 17.5f, 1, 120),
-                    Routine.RoutineExercise.SetConfig(4, WorkoutSet.SetType.NORMAL, 6, 17.5f, 0, 150)
+                    Routine.RoutineExercise.SetConfig(4, WorkoutSet.SetType.FAILURE, 6, 17.5f, 0, 150)
                 )),
                 Routine.RoutineExercise(2, 5009, "Dumbbell Bench Press", 1, listOf(
                     Routine.RoutineExercise.SetConfig(5, WorkoutSet.SetType.NORMAL, 10, 0f, 2, 120),
                     Routine.RoutineExercise.SetConfig(6, WorkoutSet.SetType.NORMAL, 8, 0f, 2, 120),
                     Routine.RoutineExercise.SetConfig(7, WorkoutSet.SetType.NORMAL, 8, 0f, 1, 120),
-                    Routine.RoutineExercise.SetConfig(8, WorkoutSet.SetType.NORMAL, 6, 0f, 0, 150)
+                    Routine.RoutineExercise.SetConfig(8, WorkoutSet.SetType.FAILURE, 6, 0f, 0, 150)
                 )),
                 Routine.RoutineExercise(3, 5045, "Dumbbell Decline Press", 2, listOf(
                     Routine.RoutineExercise.SetConfig(9, WorkoutSet.SetType.NORMAL, 12, 0f, 2, 90),
@@ -51,11 +51,11 @@ object RoutineRepository {
                 Routine.RoutineExercise(4, 5041, "Cable Decline Chest Fly", 3, listOf(
                     Routine.RoutineExercise.SetConfig(12, WorkoutSet.SetType.NORMAL, 15, 0f, 1, 60),
                     Routine.RoutineExercise.SetConfig(13, WorkoutSet.SetType.NORMAL, 12, 0f, 1, 60),
-                    Routine.RoutineExercise.SetConfig(14, WorkoutSet.SetType.NORMAL, 12, 0f, 0, 60)
+                    Routine.RoutineExercise.SetConfig(14, WorkoutSet.SetType.FAILURE, 12, 0f, 0, 60)
                 )),
                 Routine.RoutineExercise(5, 5012, "Dumbbell Fly", 4, listOf(
                     Routine.RoutineExercise.SetConfig(15, WorkoutSet.SetType.NORMAL, 15, 0f, 1, 60),
-                    Routine.RoutineExercise.SetConfig(16, WorkoutSet.SetType.NORMAL, 12, 0f, 0, 60)
+                    Routine.RoutineExercise.SetConfig(16, WorkoutSet.SetType.FAILURE, 12, 0f, 0, 60)
                 )),
                 Routine.RoutineExercise(6, 3054, "Dumbbell Incline Hammer Curl (Prone)", 5, listOf(
                     Routine.RoutineExercise.SetConfig(17, WorkoutSet.SetType.NORMAL, 12, 10f, 2, 90),
@@ -65,11 +65,11 @@ object RoutineRepository {
                 Routine.RoutineExercise(7, 3006, "Preacher Curl Machine", 6, listOf(
                     Routine.RoutineExercise.SetConfig(20, WorkoutSet.SetType.NORMAL, 12, 0f, 1, 90),
                     Routine.RoutineExercise.SetConfig(21, WorkoutSet.SetType.NORMAL, 10, 0f, 1, 90),
-                    Routine.RoutineExercise.SetConfig(22, WorkoutSet.SetType.NORMAL, 10, 0f, 0, 90)
+                    Routine.RoutineExercise.SetConfig(22, WorkoutSet.SetType.FAILURE, 10, 0f, 0, 90)
                 )),
                 Routine.RoutineExercise(8, 3017, "Cable Rope Hammer Curl", 7, listOf(
                     Routine.RoutineExercise.SetConfig(23, WorkoutSet.SetType.NORMAL, 15, 10f, 1, 60),
-                    Routine.RoutineExercise.SetConfig(24, WorkoutSet.SetType.NORMAL, 12, 10f, 0, 60)
+                    Routine.RoutineExercise.SetConfig(24, WorkoutSet.SetType.FAILURE, 12, 10f, 0, 60)
                 ))
             )
         ),
@@ -96,7 +96,7 @@ object RoutineRepository {
                 Routine.RoutineExercise(4, 21004, "Cable Rope Face Pull", 3, listOf(
                     Routine.RoutineExercise.SetConfig(34, WorkoutSet.SetType.NORMAL, 15, 20f, 2, 60),
                     Routine.RoutineExercise.SetConfig(35, WorkoutSet.SetType.NORMAL, 12, 25f, 1, 60),
-                    Routine.RoutineExercise.SetConfig(36, WorkoutSet.SetType.NORMAL, 12, 25f, 0, 75)
+                    Routine.RoutineExercise.SetConfig(36, WorkoutSet.SetType.FAILURE, 12, 25f, 0, 75)
                 )),
                 Routine.RoutineExercise(5, 20010, "Dumbbell Romanian Deadlift", 4, listOf(
                     Routine.RoutineExercise.SetConfig(37, WorkoutSet.SetType.NORMAL, 12, 15f, 2, 120),
@@ -116,7 +116,7 @@ object RoutineRepository {
                 Routine.RoutineExercise(8, 8336, "Cable Reverse Grip Tricep Extension", 7, listOf(
                     Routine.RoutineExercise.SetConfig(46, WorkoutSet.SetType.NORMAL, 15, 15f, 2, 60),
                     Routine.RoutineExercise.SetConfig(47, WorkoutSet.SetType.NORMAL, 12, 20f, 1, 60),
-                    Routine.RoutineExercise.SetConfig(48, WorkoutSet.SetType.NORMAL, 12, 20f, 0, 75)
+                    Routine.RoutineExercise.SetConfig(48, WorkoutSet.SetType.FAILURE, 12, 20f, 0, 75)
                 ))
             )
         ),
@@ -129,7 +129,7 @@ object RoutineRepository {
                     Routine.RoutineExercise.SetConfig(49, WorkoutSet.SetType.NORMAL, 10, 40f, 2, 150),
                     Routine.RoutineExercise.SetConfig(50, WorkoutSet.SetType.NORMAL, 8, 50f, 2, 150),
                     Routine.RoutineExercise.SetConfig(51, WorkoutSet.SetType.NORMAL, 8, 60f, 1, 180),
-                    Routine.RoutineExercise.SetConfig(52, WorkoutSet.SetType.NORMAL, 6, 60f, 0, 180)
+                    Routine.RoutineExercise.SetConfig(52, WorkoutSet.SetType.FAILURE, 6, 60f, 0, 180)
                 )),
                 Routine.RoutineExercise(2, 20002, "Machine Leg Press", 1, listOf(
                     Routine.RoutineExercise.SetConfig(53, WorkoutSet.SetType.NORMAL, 12, 100f, 2, 120),
@@ -144,52 +144,52 @@ object RoutineRepository {
                 Routine.RoutineExercise(4, 20004, "Machine Seated Leg Curl", 3, listOf(
                     Routine.RoutineExercise.SetConfig(59, WorkoutSet.SetType.NORMAL, 15, 35f, 2, 90),
                     Routine.RoutineExercise.SetConfig(60, WorkoutSet.SetType.NORMAL, 12, 40f, 1, 90),
-                    Routine.RoutineExercise.SetConfig(61, WorkoutSet.SetType.NORMAL, 12, 45f, 0, 90)
+                    Routine.RoutineExercise.SetConfig(61, WorkoutSet.SetType.FAILURE, 12, 45f, 0, 90)
                 )),
                 Routine.RoutineExercise(5, 20009, "Hack Squat", 4, listOf(
                     Routine.RoutineExercise.SetConfig(62, WorkoutSet.SetType.NORMAL, 12, 50f, 2, 120),
                     Routine.RoutineExercise.SetConfig(63, WorkoutSet.SetType.NORMAL, 10, 60f, 1, 120),
-                    Routine.RoutineExercise.SetConfig(64, WorkoutSet.SetType.NORMAL, 10, 70f, 0, 150)
+                    Routine.RoutineExercise.SetConfig(64, WorkoutSet.SetType.FAILURE, 10, 70f, 0, 150)
                 )),
                 Routine.RoutineExercise(6, 20007, "Machine Hip Adduction", 5, listOf(
                     Routine.RoutineExercise.SetConfig(65, WorkoutSet.SetType.NORMAL, 15, 35f, 2, 60),
                     Routine.RoutineExercise.SetConfig(66, WorkoutSet.SetType.NORMAL, 15, 40f, 1, 60),
-                    Routine.RoutineExercise.SetConfig(67, WorkoutSet.SetType.NORMAL, 12, 45f, 0, 60)
+                    Routine.RoutineExercise.SetConfig(67, WorkoutSet.SetType.FAILURE, 12, 45f, 0, 60)
                 )),
                 Routine.RoutineExercise(7, 23002, "Machine Calf Raise", 6, listOf(
                     Routine.RoutineExercise.SetConfig(68, WorkoutSet.SetType.NORMAL, 20, 20f, 2, 60),
                     Routine.RoutineExercise.SetConfig(69, WorkoutSet.SetType.NORMAL, 15, 30f, 1, 60),
-                    Routine.RoutineExercise.SetConfig(70, WorkoutSet.SetType.NORMAL, 15, 35f, 0, 60)
+                    Routine.RoutineExercise.SetConfig(70, WorkoutSet.SetType.FAILURE, 15, 35f, 0, 60)
                 )),
                 Routine.RoutineExercise(8, 23001, "Machine Seated Calf Raise", 7, listOf(
                     Routine.RoutineExercise.SetConfig(71, WorkoutSet.SetType.NORMAL, 20, 20f, 2, 60),
                     Routine.RoutineExercise.SetConfig(72, WorkoutSet.SetType.NORMAL, 18, 25f, 1, 60),
-                    Routine.RoutineExercise.SetConfig(73, WorkoutSet.SetType.NORMAL, 15, 30f, 0, 60)
+                    Routine.RoutineExercise.SetConfig(73, WorkoutSet.SetType.FAILURE, 15, 30f, 0, 60)
                 )),
                 Routine.RoutineExercise(9, 1069, "Straight Arm Plank", 8, listOf(
                     Routine.RoutineExercise.SetConfig(74, WorkoutSet.SetType.NORMAL, 20, 0f, 2, 45),
                     Routine.RoutineExercise.SetConfig(75, WorkoutSet.SetType.NORMAL, 20, 0f, 1, 45),
-                    Routine.RoutineExercise.SetConfig(76, WorkoutSet.SetType.NORMAL, 20, 0f, 0, 45)
+                    Routine.RoutineExercise.SetConfig(76, WorkoutSet.SetType.FAILURE, 20, 0f, 0, 45)
                 ), WorkoutSet.InputType.REPS),
                 Routine.RoutineExercise(10, 1005, "Hanging Leg Raise", 9, listOf(
                     Routine.RoutineExercise.SetConfig(77, WorkoutSet.SetType.NORMAL, 15, 0f, 2, 60),
                     Routine.RoutineExercise.SetConfig(78, WorkoutSet.SetType.NORMAL, 12, 0f, 1, 60),
-                    Routine.RoutineExercise.SetConfig(79, WorkoutSet.SetType.NORMAL, 12, 0f, 0, 60)
+                    Routine.RoutineExercise.SetConfig(79, WorkoutSet.SetType.FAILURE, 12, 0f, 0, 60)
                 )),
                 Routine.RoutineExercise(11, 1027, "Cable Crunch", 10, listOf(
                     Routine.RoutineExercise.SetConfig(80, WorkoutSet.SetType.NORMAL, 15, 25f, 2, 60),
                     Routine.RoutineExercise.SetConfig(81, WorkoutSet.SetType.NORMAL, 12, 30f, 1, 60),
-                    Routine.RoutineExercise.SetConfig(82, WorkoutSet.SetType.NORMAL, 12, 35f, 0, 60)
+                    Routine.RoutineExercise.SetConfig(82, WorkoutSet.SetType.FAILURE, 12, 35f, 0, 60)
                 )),
                 Routine.RoutineExercise(12, 1014, "Cable Wood Chop", 11, listOf(
                     Routine.RoutineExercise.SetConfig(83, WorkoutSet.SetType.NORMAL, 15, 15f, 2, 60),
                     Routine.RoutineExercise.SetConfig(84, WorkoutSet.SetType.NORMAL, 12, 20f, 1, 60),
-                    Routine.RoutineExercise.SetConfig(85, WorkoutSet.SetType.NORMAL, 12, 20f, 0, 60)
+                    Routine.RoutineExercise.SetConfig(85, WorkoutSet.SetType.FAILURE, 12, 20f, 0, 60)
                 )),
                 Routine.RoutineExercise(13, 1001, "Plank", 12, listOf(
                     Routine.RoutineExercise.SetConfig(86, WorkoutSet.SetType.NORMAL, 60, 0f, 2, 60),
                     Routine.RoutineExercise.SetConfig(87, WorkoutSet.SetType.NORMAL, 60, 0f, 1, 60),
-                    Routine.RoutineExercise.SetConfig(88, WorkoutSet.SetType.NORMAL, 60, 0f, 0, 60)
+                    Routine.RoutineExercise.SetConfig(88, WorkoutSet.SetType.FAILURE, 60, 0f, 0, 60)
                 ), WorkoutSet.InputType.TIME)
             )
         ),
@@ -203,7 +203,7 @@ object RoutineRepository {
                     Routine.RoutineExercise.SetConfig(89, WorkoutSet.SetType.NORMAL, 10, 12.5f, 2, 120),
                     Routine.RoutineExercise.SetConfig(90, WorkoutSet.SetType.NORMAL, 8, 15f, 2, 120),
                     Routine.RoutineExercise.SetConfig(91, WorkoutSet.SetType.NORMAL, 8, 17.5f, 1, 120),
-                    Routine.RoutineExercise.SetConfig(92, WorkoutSet.SetType.NORMAL, 6, 17.5f, 0, 150)
+                    Routine.RoutineExercise.SetConfig(92, WorkoutSet.SetType.FAILURE, 6, 17.5f, 0, 150)
                 )),
                 Routine.RoutineExercise(2, 8104, "Cable Lateral Raise", 1, listOf(
                     Routine.RoutineExercise.SetConfig(93, WorkoutSet.SetType.NORMAL, 15, 5f, 2, 60),
@@ -213,7 +213,7 @@ object RoutineRepository {
                 Routine.RoutineExercise(3, 8103, "Machine Reverse Fly", 3, listOf(
                     Routine.RoutineExercise.SetConfig(99, WorkoutSet.SetType.NORMAL, 15, 25f, 2, 60),
                     Routine.RoutineExercise.SetConfig(100, WorkoutSet.SetType.NORMAL, 12, 30f, 1, 60),
-                    Routine.RoutineExercise.SetConfig(101, WorkoutSet.SetType.NORMAL, 12, 30f, 0, 75)
+                    Routine.RoutineExercise.SetConfig(101, WorkoutSet.SetType.FAILURE, 12, 30f, 0, 75)
                 )),
                 Routine.RoutineExercise(4, 21004, "Cable Rope Face Pull", 4, listOf(
                     Routine.RoutineExercise.SetConfig(102, WorkoutSet.SetType.NORMAL, 15, 15f, 2, 60),
@@ -361,7 +361,7 @@ object RoutineRepository {
                 )),
                 Routine.RoutineExercise(7, 1005, "Hanging Leg Raise", 6, listOf(
                     Routine.RoutineExercise.SetConfig(17, WorkoutSet.SetType.NORMAL, 15, 0f, 1, 45),
-                    Routine.RoutineExercise.SetConfig(18, WorkoutSet.SetType.NORMAL, 12, 0f, 0, 45)
+                    Routine.RoutineExercise.SetConfig(18, WorkoutSet.SetType.FAILURE, 12, 0f, 0, 45)
                 ))
             )
         ),
@@ -392,15 +392,15 @@ object RoutineRepository {
                 )),
                 Routine.RoutineExercise(5, 3006, "Preacher Curl Machine", 4, listOf(
                     Routine.RoutineExercise.SetConfig(30, WorkoutSet.SetType.NORMAL, 12, 25f, 1, 60),
-                    Routine.RoutineExercise.SetConfig(31, WorkoutSet.SetType.NORMAL, 10, 30f, 0, 60)
+                    Routine.RoutineExercise.SetConfig(31, WorkoutSet.SetType.FAILURE, 10, 30f, 0, 60)
                 )),
                 Routine.RoutineExercise(6, 8301, "Cable Tricep Pushdown (V-Bar)", 5, listOf(
                     Routine.RoutineExercise.SetConfig(32, WorkoutSet.SetType.NORMAL, 12, 25f, 1, 60),
-                    Routine.RoutineExercise.SetConfig(33, WorkoutSet.SetType.NORMAL, 10, 30f, 0, 60)
+                    Routine.RoutineExercise.SetConfig(33, WorkoutSet.SetType.FAILURE, 10, 30f, 0, 60)
                 )),
                 Routine.RoutineExercise(7, 1001, "Plank", 6, listOf(
                     Routine.RoutineExercise.SetConfig(34, WorkoutSet.SetType.NORMAL, 60, 0f, 1, 45),
-                    Routine.RoutineExercise.SetConfig(35, WorkoutSet.SetType.NORMAL, 60, 0f, 0, 45)
+                    Routine.RoutineExercise.SetConfig(35, WorkoutSet.SetType.FAILURE, 60, 0f, 0, 45)
                 ))
             )
         ),
@@ -425,19 +425,19 @@ object RoutineRepository {
                 )),
                 Routine.RoutineExercise(4, 23005, "Barbell Standing Calf Raise", 3, listOf(
                     Routine.RoutineExercise.SetConfig(43, WorkoutSet.SetType.NORMAL, 20, 20f, 1, 60),
-                    Routine.RoutineExercise.SetConfig(44, WorkoutSet.SetType.NORMAL, 15, 25f, 0, 60)
+                    Routine.RoutineExercise.SetConfig(44, WorkoutSet.SetType.FAILURE, 15, 25f, 0, 60)
                 )),
                 Routine.RoutineExercise(5, 8112, "Dumbbell Reverse Fly", 4, listOf(
                     Routine.RoutineExercise.SetConfig(45, WorkoutSet.SetType.NORMAL, 15, 7.5f, 1, 60),
-                    Routine.RoutineExercise.SetConfig(46, WorkoutSet.SetType.NORMAL, 12, 7.5f, 0, 60)
+                    Routine.RoutineExercise.SetConfig(46, WorkoutSet.SetType.FAILURE, 12, 7.5f, 0, 60)
                 )),
                 Routine.RoutineExercise(6, 3041, "Machine Hammer Curl", 5, listOf(
                     Routine.RoutineExercise.SetConfig(47, WorkoutSet.SetType.NORMAL, 12, 12.5f, 1, 60),
-                    Routine.RoutineExercise.SetConfig(48, WorkoutSet.SetType.NORMAL, 10, 12.5f, 0, 60)
+                    Routine.RoutineExercise.SetConfig(48, WorkoutSet.SetType.FAILURE, 10, 12.5f, 0, 60)
                 )),
                 Routine.RoutineExercise(7, 1008, "Decline Crunch", 6, listOf(
                     Routine.RoutineExercise.SetConfig(49, WorkoutSet.SetType.NORMAL, 15, 5f, 1, 45),
-                    Routine.RoutineExercise.SetConfig(50, WorkoutSet.SetType.NORMAL, 12, 5f, 0, 45)
+                    Routine.RoutineExercise.SetConfig(50, WorkoutSet.SetType.FAILURE, 12, 5f, 0, 45)
                 ))
             )
         )

@@ -59,6 +59,30 @@ fun StatisticsScreen(
         totalRestTime / totalSets
     } else 0
 
+    // Current Week Stats Calculation
+    val calendar = Calendar.getInstance().apply {
+        firstDayOfWeek = Calendar.MONDAY
+        set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
+        set(Calendar.HOUR_OF_DAY, 0)
+        set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+    }
+    val startOfWeek = calendar.timeInMillis
+    calendar.add(Calendar.DAY_OF_YEAR, 7)
+    val endOfWeek = calendar.timeInMillis
+
+    val weekMeals = meals.filter { it.date in startOfWeek until endOfWeek }
+    val weekWorkouts = workouts.filter { it.date in startOfWeek until endOfWeek }
+
+    val daysWithMeals = weekMeals.map { 
+        Calendar.getInstance().apply { timeInMillis = it.date }.get(Calendar.DAY_OF_YEAR)
+    }.distinct().size.coerceAtLeast(1)
+
+    val daysWithWorkouts = weekWorkouts.map {
+        Calendar.getInstance().apply { timeInMillis = it.date }.get(Calendar.DAY_OF_YEAR)
+    }.distinct().size.coerceAtLeast(1)
+
     Scaffold(
         topBar = {
             GymBroTopAppBar(
@@ -87,13 +111,17 @@ fun StatisticsScreen(
             }
 
             item {
+                CurrentWeekAveragesCard(weekMeals = weekMeals, weekWorkouts = weekWorkouts)
+            }
+
+            item {
                 // Macronutritional Breakdown Section
-                MacronutritionalBreakdownSection(meals = meals)
+                MacronutritionalBreakdownSection(weekMeals = weekMeals, daysLogged = daysWithMeals)
             }
 
             item {
                 // Micronutritional Breakdown Section
-                MicronutritionalBreakdownSection(meals = meals)
+                MicronutritionalBreakdownSection(weekMeals = weekMeals, daysLogged = daysWithMeals)
             }
 
             item {
@@ -102,16 +130,10 @@ fun StatisticsScreen(
 
             item {
                 // Weekly Activity (Calculated from actual sets)
-                val calendar = Calendar.getInstance()
-                val currentWeek = calendar.get(Calendar.WEEK_OF_YEAR)
-                val currentYear = calendar.get(Calendar.YEAR)
                 val dayNames = listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
                 val weeklyData = dayNames.map { dayName ->
-                    val setsCount = workouts.filter { workout ->
+                    val setsCount = weekWorkouts.filter { workout ->
                         val workoutCal = Calendar.getInstance().apply { timeInMillis = workout.date }
-                        val workoutWeek = workoutCal.get(Calendar.WEEK_OF_YEAR)
-                        val workoutYear = workoutCal.get(Calendar.YEAR)
-                        
                         val dayOfWeek = workoutCal.get(Calendar.DAY_OF_WEEK)
                         val targetDayOfWeek = when(dayName) {
                             "Sun" -> Calendar.SUNDAY
@@ -123,15 +145,13 @@ fun StatisticsScreen(
                             "Sat" -> Calendar.SATURDAY
                             else -> -1
                         }
-                        
-                        currentWeek == workoutWeek && currentYear == workoutYear && dayOfWeek == targetDayOfWeek
+                        dayOfWeek == targetDayOfWeek
                     }.sumOf { it.sets.size }
                     dayName to setsCount
                 }
 
                 val totalSetsThisWeek = weeklyData.sumOf { it.second }
-                val daysWithActivity = weeklyData.count { it.second > 0 }
-                val avgSetsPerDay = if (daysWithActivity > 0) totalSetsThisWeek.toFloat() / daysWithActivity else 0f
+                val avgSetsPerDay = totalSetsThisWeek.toFloat() / daysWithWorkouts
 
                 WeeklyActivityChart(dailySets = weeklyData, avgSets = avgSetsPerDay)
             }
@@ -262,31 +282,77 @@ fun ExerciseAveragesCard(
 }
 
 @Composable
-fun MacronutritionalBreakdownSection(meals: List<Meal>) {
-    val calendar = Calendar.getInstance().apply {
-        firstDayOfWeek = Calendar.MONDAY
-        set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
-        set(Calendar.HOUR_OF_DAY, 0)
-        set(Calendar.MINUTE, 0)
-        set(Calendar.SECOND, 0)
-        set(Calendar.MILLISECOND, 0)
-    }
-    val startOfWeek = calendar.timeInMillis
-    
-    calendar.add(Calendar.DAY_OF_YEAR, 7)
-    val endOfWeek = calendar.timeInMillis
-
-    val weekMeals = meals.filter { it.date in startOfWeek until endOfWeek }
-    
+fun CurrentWeekAveragesCard(weekMeals: List<Meal>, weekWorkouts: List<Workout>) {
     val totalCalories = weekMeals.sumOf { it.macros.calories.toDouble() }.toFloat()
     val totalProtein = weekMeals.sumOf { it.macros.protein.toDouble() }.toFloat()
     val totalCarbs = weekMeals.sumOf { it.macros.carbs.toDouble() }.toFloat()
     val totalFats = weekMeals.sumOf { it.macros.fats.toDouble() }.toFloat()
+    
+    val totalSets = weekWorkouts.sumOf { it.sets.size }
 
     val avgCalories = totalCalories / 7f
     val avgProtein = totalProtein / 7f
     val avgCarbs = totalCarbs / 7f
     val avgFats = totalFats / 7f
+    val avgSets = totalSets.toFloat() / 7f
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF1C1C1E))
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                "Current Week's Average",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold
+            )
+            
+            Text(
+                "Daily average for the full week (Totals / 7)",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color(0xFF8E8E93)
+            )
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                MacroStatColumn("Calories", "${avgCalories.toInt()}", "kcal")
+                MacroStatColumn("Protein", "${avgProtein.toInt()}", "g")
+                MacroStatColumn("Sets", String.format(Locale.getDefault(), "%.1f", avgSets), "sets")
+            }
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(24.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    SmallMacroText("Carbs: ${avgCarbs.toInt()}g")
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    SmallMacroText("Fats: ${avgFats.toInt()}g")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun MacronutritionalBreakdownSection(weekMeals: List<Meal>, daysLogged: Int) {
+    val totalCalories = weekMeals.sumOf { it.macros.calories.toDouble() }.toFloat()
+    val totalProtein = weekMeals.sumOf { it.macros.protein.toDouble() }.toFloat()
+    val totalCarbs = weekMeals.sumOf { it.macros.carbs.toDouble() }.toFloat()
+    val totalFats = weekMeals.sumOf { it.macros.fats.toDouble() }.toFloat()
+
+    val avgCalories = totalCalories / daysLogged
+    val avgProtein = totalProtein / daysLogged
+    val avgCarbs = totalCarbs / daysLogged
+    val avgFats = totalFats / daysLogged
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -301,7 +367,7 @@ fun MacronutritionalBreakdownSection(meals: List<Meal>) {
             )
             
             Text(
-                "Daily average based on current week (Mon-Sun)",
+                "Daily average based on logged days (${daysLogged} days)",
                 style = MaterialTheme.typography.bodySmall,
                 color = Color(0xFF8E8E93)
             )
@@ -335,10 +401,10 @@ fun MacronutritionalBreakdownSection(meals: List<Meal>) {
                 mealTypeOrder.forEach { type ->
                     val mealsOfType = weekMeals.filter { it.type == type }
                     if (mealsOfType.isNotEmpty()) {
-                        val typeCalories = mealsOfType.sumOf { it.macros.calories.toDouble() }.toFloat() / 7f
-                        val typeProtein = mealsOfType.sumOf { it.macros.protein.toDouble() }.toFloat() / 7f
-                        val typeCarbs = mealsOfType.sumOf { it.macros.carbs.toDouble() }.toFloat() / 7f
-                        val typeFats = mealsOfType.sumOf { it.macros.fats.toDouble() }.toFloat() / 7f
+                        val typeCalories = mealsOfType.sumOf { it.macros.calories.toDouble() }.toFloat() / daysLogged
+                        val typeProtein = mealsOfType.sumOf { it.macros.protein.toDouble() }.toFloat() / daysLogged
+                        val typeCarbs = mealsOfType.sumOf { it.macros.carbs.toDouble() }.toFloat() / daysLogged
+                        val typeFats = mealsOfType.sumOf { it.macros.fats.toDouble() }.toFloat() / daysLogged
 
                         Row(
                             modifier = Modifier
@@ -378,33 +444,28 @@ fun MacronutritionalBreakdownSection(meals: List<Meal>) {
 }
 
 @Composable
-fun MicronutritionalBreakdownSection(meals: List<Meal>) {
-    val calendar = Calendar.getInstance().apply {
-        firstDayOfWeek = Calendar.MONDAY
-        set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
-        set(Calendar.HOUR_OF_DAY, 0)
-        set(Calendar.MINUTE, 0)
-        set(Calendar.SECOND, 0)
-        set(Calendar.MILLISECOND, 0)
-    }
-    val startOfWeek = calendar.timeInMillis
-    
-    calendar.add(Calendar.DAY_OF_YEAR, 7)
-    val endOfWeek = calendar.timeInMillis
-
-    val weekMeals = meals.filter { it.date in startOfWeek until endOfWeek }
-    
+fun MicronutritionalBreakdownSection(weekMeals: List<Meal>, daysLogged: Int) {
     val totalFibre = weekMeals.sumOf { it.macros.fibre.toDouble() }.toFloat()
     val totalSugar = weekMeals.sumOf { it.macros.refinedSugar.toDouble() }.toFloat()
     val totalVitB = weekMeals.sumOf { it.macros.vitaminB.toDouble() }.toFloat()
     val totalVitD = weekMeals.sumOf { it.macros.vitaminD.toDouble() }.toFloat()
     val totalOmega = weekMeals.sumOf { it.macros.omega.toDouble() }.toFloat()
+    val totalVitC = weekMeals.sumOf { it.macros.vitaminC.toDouble() }.toFloat()
+    val totalIron = weekMeals.sumOf { it.macros.iron.toDouble() }.toFloat()
+    val totalPotassium = weekMeals.sumOf { it.macros.potassium.toDouble() }.toFloat()
+    val totalMagnesium = weekMeals.sumOf { it.macros.magnesium.toDouble() }.toFloat()
+    val totalSodium = weekMeals.sumOf { it.macros.sodium.toDouble() }.toFloat()
 
-    val avgFibre = totalFibre / 7f
-    val avgSugar = totalSugar / 7f
-    val avgVitB = totalVitB / 7f
-    val avgVitD = totalVitD / 7f
-    val avgOmega = totalOmega / 7f
+    val avgFibre = totalFibre / daysLogged
+    val avgSugar = totalSugar / daysLogged
+    val avgVitB = totalVitB / daysLogged
+    val avgVitD = totalVitD / daysLogged
+    val avgOmega = totalOmega / daysLogged
+    val avgVitC = totalVitC / daysLogged
+    val avgIron = totalIron / daysLogged
+    val avgPotassium = totalPotassium / daysLogged
+    val avgMagnesium = totalMagnesium / daysLogged
+    val avgSodium = totalSodium / daysLogged
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -419,7 +480,7 @@ fun MicronutritionalBreakdownSection(meals: List<Meal>) {
             )
             
             Text(
-                "Daily average based on current week (Mon-Sun)",
+                "Daily average based on logged days (${daysLogged} days)",
                 style = MaterialTheme.typography.bodySmall,
                 color = Color(0xFF8E8E93)
             )
@@ -436,6 +497,19 @@ fun MicronutritionalBreakdownSection(meals: List<Meal>) {
                 MacroStatColumn("Vit B", String.format(Locale.getDefault(), "%.1f", avgVitB), "mg")
                 MacroStatColumn("Vit D", String.format(Locale.getDefault(), "%.1f", avgVitD), "mcg")
                 MacroStatColumn("Omega", "${avgOmega.toInt()}", "mg")
+            }
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                MacroStatColumn("Vit C", "${avgVitC.toInt()}", "mg")
+                MacroStatColumn("Iron", "${avgIron.toInt()}", "mg")
+                MacroStatColumn("Potassium", "${avgPotassium.toInt()}", "mg")
+                MacroStatColumn("Magnesium", "${avgMagnesium.toInt()}", "mg")
+                MacroStatColumn("Sodium", "${avgSodium.toInt()}", "mg")
             }
 
             if (weekMeals.isNotEmpty()) {
@@ -454,11 +528,16 @@ fun MicronutritionalBreakdownSection(meals: List<Meal>) {
                 mealTypeOrder.forEach { type ->
                     val mealsOfType = weekMeals.filter { it.type == type }
                     if (mealsOfType.isNotEmpty()) {
-                        val typeFibre = mealsOfType.sumOf { it.macros.fibre.toDouble() }.toFloat() / 7f
-                        val typeSugar = mealsOfType.sumOf { it.macros.refinedSugar.toDouble() }.toFloat() / 7f
-                        val typeVitB = mealsOfType.sumOf { it.macros.vitaminB.toDouble() }.toFloat() / 7f
-                        val typeVitD = mealsOfType.sumOf { it.macros.vitaminD.toDouble() }.toFloat() / 7f
-                        val typeOmega = mealsOfType.sumOf { it.macros.omega.toDouble() }.toFloat() / 7f
+                        val typeFibre = mealsOfType.sumOf { it.macros.fibre.toDouble() }.toFloat() / daysLogged
+                        val typeSugar = mealsOfType.sumOf { it.macros.refinedSugar.toDouble() }.toFloat() / daysLogged
+                        val typeVitB = mealsOfType.sumOf { it.macros.vitaminB.toDouble() }.toFloat() / daysLogged
+                        val typeVitD = mealsOfType.sumOf { it.macros.vitaminD.toDouble() }.toFloat() / daysLogged
+                        val typeOmega = mealsOfType.sumOf { it.macros.omega.toDouble() }.toFloat() / daysLogged
+                        val typeVitC = mealsOfType.sumOf { it.macros.vitaminC.toDouble() }.toFloat() / daysLogged
+                        val typeIron = mealsOfType.sumOf { it.macros.iron.toDouble() }.toFloat() / daysLogged
+                        val typePotassium = mealsOfType.sumOf { it.macros.potassium.toDouble() }.toFloat() / daysLogged
+                        val typeMagnesium = mealsOfType.sumOf { it.macros.magnesium.toDouble() }.toFloat() / daysLogged
+                        val typeSodium = mealsOfType.sumOf { it.macros.sodium.toDouble() }.toFloat() / daysLogged
 
                         Row(
                             modifier = Modifier
@@ -483,6 +562,13 @@ fun MicronutritionalBreakdownSection(meals: List<Meal>) {
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     SmallMacroText("D: ${String.format(Locale.getDefault(), "%.1f", typeVitD)}mcg")
                                     SmallMacroText("Omg: ${typeOmega.toInt()}mg")
+                                    SmallMacroText("C: ${typeVitC.toInt()}mg")
+                                }
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    SmallMacroText("Fe: ${typeIron.toInt()}mg")
+                                    SmallMacroText("K: ${typePotassium.toInt()}mg")
+                                    SmallMacroText("Mg: ${typeMagnesium.toInt()}mg")
+                                    SmallMacroText("Na: ${typeSodium.toInt()}mg")
                                 }
                             }
                         }

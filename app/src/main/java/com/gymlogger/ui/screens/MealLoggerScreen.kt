@@ -6,13 +6,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Label
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -42,7 +38,9 @@ import com.gymlogger.data.MealRepository
 import com.gymlogger.data.FoodLabelRepository
 import com.gymlogger.model.Meal
 import com.gymlogger.model.MealItem
+import com.gymlogger.model.MealMacros
 import com.gymlogger.model.MealType
+import androidx.compose.ui.tooling.preview.Preview
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -96,6 +94,21 @@ fun MealLoggerScreen(onNavigateBack: () -> Unit) {
         }.toSortedMap(compareByDescending { it })
     }
 
+    val dailyTotals = remember(meals) {
+        meals.groupBy {
+            val cal = java.util.Calendar.getInstance().apply {
+                timeInMillis = it.date
+                set(java.util.Calendar.HOUR_OF_DAY, 0)
+                set(java.util.Calendar.MINUTE, 0)
+                set(java.util.Calendar.SECOND, 0)
+                set(java.util.Calendar.MILLISECOND, 0)
+            }
+            cal.timeInMillis
+        }.mapValues { entry ->
+            entry.value.fold(MealMacros()) { acc, meal -> acc + meal.macros }
+        }
+    }
+
     val expandedGroups = remember { mutableStateMapOf<String, Boolean>() }
 
     LaunchedEffect(Unit) {
@@ -124,6 +137,20 @@ fun MealLoggerScreen(onNavigateBack: () -> Unit) {
                 subtitle = if (isInitializingAi) "Initializing AI Engine..." else null,
                 onNavigateBack = onNavigateBack,
                 actions = {
+                    IconButton(onClick = {
+                        coroutineScope.launch {
+                            isInitializingAi = true
+                            MacroCalculator.release()
+                            MacroCalculator.init(context)
+                            isInitializingAi = false
+                        }
+                    }) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Restart Gemma",
+                            tint = Color.White
+                        )
+                    }
                     IconButton(onClick = { 
                         val fileName = "meal_logs_${SimpleDateFormat("yyyyMMdd_HHmm", Locale.getDefault()).format(Date())}.csv"
                         createDocumentLauncher.launch(fileName)
@@ -167,6 +194,12 @@ fun MealLoggerScreen(onNavigateBack: () -> Unit) {
                     DateHeader(dateMillis)
                 }
 
+                item(key = "totals-$dateMillis") {
+                    dailyTotals[dateMillis]?.let { totals ->
+                        DailyTotalsCard(totals)
+                    }
+                }
+
                 typesWithMeals.forEach { (type, typeMeals) ->
                     val groupKey = "$dateMillis-${type.name}"
                     val isExpanded = expandedGroups[groupKey] ?: true
@@ -195,7 +228,7 @@ fun MealLoggerScreen(onNavigateBack: () -> Unit) {
                         }
                     }
                 }
-                
+
                 item { Spacer(modifier = Modifier.height(12.dp)) }
             }
         }
@@ -312,8 +345,8 @@ fun MealCard(meal: Meal, onEdit: () -> Unit, onDelete: () -> Unit) {
                             color = Color.White,
                             fontWeight = FontWeight.Medium
                         )
-                        val timeString = java.text.SimpleDateFormat("h:mm a", java.util.Locale.getDefault())
-                            .format(java.util.Date(meal.date))
+                        val timeString = SimpleDateFormat("h:mm a", Locale.getDefault())
+                            .format(Date(meal.date))
                         Text(
                             text = "$timeString • ${meal.macros.calories.toInt()} kcal",
                             style = MaterialTheme.typography.labelSmall,
@@ -380,10 +413,22 @@ fun MealCard(meal: Meal, onEdit: () -> Unit, onDelete: () -> Unit) {
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     MacroItem("Fibre", "${meal.macros.fibre.toInt()}g")
-                    MacroItem("Refined Sugar", "${meal.macros.refinedSugar.toInt()}g")
-                    MacroItem("Vit B", "${String.format(java.util.Locale.getDefault(), "%.1f", meal.macros.vitaminB)}mg")
-                    MacroItem("Vit D", "${String.format(java.util.Locale.getDefault(), "%.1f", meal.macros.vitaminD)}mcg")
+                    MacroItem("Sugar", "${meal.macros.refinedSugar.toInt()}g")
+                    MacroItem("Vit B", "${String.format(Locale.getDefault(), "%.1f", meal.macros.vitaminB)}mg")
+                    MacroItem("Vit D", "${String.format(Locale.getDefault(), "%.1f", meal.macros.vitaminD)}mcg")
                     MacroItem("Omega", "${meal.macros.omega.toInt()}mg")
+                }
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    MacroItem("Vit C", "${meal.macros.vitaminC.toInt()}mg")
+                    MacroItem("Iron", "${meal.macros.iron.toInt()}mg")
+                    MacroItem("Potas", "${meal.macros.potassium.toInt()}mg")
+                    MacroItem("Magn", "${meal.macros.magnesium.toInt()}mg")
+                    MacroItem("Sod", "${meal.macros.sodium.toInt()}mg")
                 }
                 
                 HorizontalDivider(
@@ -413,46 +458,155 @@ fun MealCard(meal: Meal, onEdit: () -> Unit, onDelete: () -> Unit) {
     }
 }
 
+@Preview
+@Composable
+fun DailyTotalsCardPreview() {
+    MaterialTheme {
+        DailyTotalsCard(
+            totals = MealMacros(
+                calories = 2000f,
+                protein = 150f,
+                carbs = 200f,
+                fats = 60f,
+                fibre = 30f,
+                refinedSugar = 20f,
+                vitaminB = 1.5f,
+                vitaminD = 10f,
+                omega = 1000f
+            )
+        )
+    }
+}
+
+@Preview
+@Composable
+fun AddMealDialogPreview() {
+    MaterialTheme {
+        AddMealDialog(
+            initialMeal = null,
+            onDismiss = {},
+            onSave = {}
+        )
+    }
+}
+
+@Preview
+@Composable
+fun EditMealDialogPreview() {
+    MaterialTheme {
+        AddMealDialog(
+            initialMeal = Meal(
+                id = 1,
+                date = System.currentTimeMillis(),
+                type = MealType.BREAKFAST,
+                items = listOf(MealItem(1, "Chai", "150ml")),
+                macros = MealMacros()
+            ),
+            onDismiss = {},
+            onSave = {}
+        )
+    }
+}
+
+@Composable
+fun DailyTotalsCard(totals: MealMacros) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        color = Color(0xFF1C1C1E).copy(alpha = 0.7f),
+        shape = RoundedCornerShape(12.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF2C2C2E))
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "Daily Totals",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                MacroItem("Calories", "${totals.calories.toInt()}")
+                MacroItem("Protein", "${totals.protein.toInt()}g")
+                MacroItem("Carbs", "${totals.carbs.toInt()}g")
+                MacroItem("Fats", "${totals.fats.toInt()}g")
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+            HorizontalDivider(color = Color(0xFF2C2C2E))
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                MacroItem("Fibre", "${totals.fibre.toInt()}g")
+                MacroItem("Sugar", "${totals.refinedSugar.toInt()}g")
+                MacroItem("Vit B", "${String.format(Locale.getDefault(), "%.1f", totals.vitaminB)}mg")
+                MacroItem("Vit D", "${String.format(Locale.getDefault(), "%.1f", totals.vitaminD)}mcg")
+                MacroItem("Omega", "${totals.omega.toInt()}mg")
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                MacroItem("Vit C", "${totals.vitaminC.toInt()}mg")
+                MacroItem("Iron", "${totals.iron.toInt()}mg")
+                MacroItem("Potas", "${totals.potassium.toInt()}mg")
+                MacroItem("Magn", "${totals.magnesium.toInt()}mg")
+                MacroItem("Sod", "${totals.sodium.toInt()}mg")
+            }
+        }
+    }
+}
+
 @Composable
 fun DateHeader(dateMillis: Long) {
-    val dateString = java.text.SimpleDateFormat("EEEE, MMM dd", java.util.Locale.getDefault())
-        .format(java.util.Date(dateMillis))
+    val date = Date(dateMillis)
+    val sdf = SimpleDateFormat("EEEE, MMMM d", Locale.getDefault())
+    val dateString = sdf.format(date)
+    
     Text(
         text = dateString,
         style = MaterialTheme.typography.titleLarge,
         color = Color.White,
-        fontWeight = FontWeight.Bold,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 16.dp, bottom = 8.dp)
+        modifier = Modifier.padding(vertical = 16.dp)
     )
 }
 
 @Composable
-fun MealTypeHeader(
-    type: MealType,
-    isExpanded: Boolean,
-    onToggle: () -> Unit
-) {
+fun MealTypeHeader(type: MealType, isExpanded: Boolean, onToggle: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onToggle() }
+            .clickable(onClick = onToggle)
             .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(
-            imageVector = if (isExpanded) Icons.Default.KeyboardArrowDown else Icons.AutoMirrored.Filled.KeyboardArrowRight,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(24.dp)
-        )
-        Spacer(modifier = Modifier.width(8.dp))
         Text(
-            text = type.name.lowercase().replaceFirstChar { it.uppercase() },
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.primary,
-            fontWeight = FontWeight.Bold
+            text = when (type) {
+                MealType.BREAKFAST -> "Breakfast"
+                MealType.LUNCH -> "Lunch"
+                MealType.DINNER -> "Dinner"
+                MealType.SNACK -> "Snacks"
+                MealType.PRE_WORKOUT -> "Pre-Workout"
+            },
+            style = MaterialTheme.typography.titleSmall,
+            color = Color(0xFF8E8E93),
+            modifier = Modifier.weight(1f)
+        )
+        Icon(
+            imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+            contentDescription = null,
+            tint = Color(0xFF8E8E93),
+            modifier = Modifier.size(20.dp)
         )
     }
 }
@@ -460,516 +614,385 @@ fun MealTypeHeader(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FoodLabelDialog(onDismiss: () -> Unit) {
+    val labels by FoodLabelRepository.labels.collectAsStateWithLifecycle(initialValue = emptyList())
+    var showAddDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
-    val labels by FoodLabelRepository.labels.collectAsState()
     val coroutineScope = rememberCoroutineScope()
-    
-    var itemName by remember { mutableStateOf("") }
-    var servingSize by remember { mutableStateOf("100g") }
-    var calories by remember { mutableStateOf("") }
-    var protein by remember { mutableStateOf("") }
-    var carbs by remember { mutableStateOf("") }
-    var fats by remember { mutableStateOf("") }
-    var fibre by remember { mutableStateOf("") }
-    var refinedSugar by remember { mutableStateOf("") }
-    var vitaminB by remember { mutableStateOf("") }
-    var vitaminD by remember { mutableStateOf("") }
-    var omega by remember { mutableStateOf("") }
-
-    val isFormValid = itemName.isNotBlank() && 
-                      servingSize.isNotBlank() &&
-                      calories.isNotBlank() && 
-                      protein.isNotBlank() && 
-                      carbs.isNotBlank() && 
-                      fats.isNotBlank()
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
-            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.8f),
             color = Color(0xFF1C1C1E),
-            modifier = Modifier.fillMaxWidth().fillMaxHeight(0.9f).padding(16.dp)
+            shape = RoundedCornerShape(16.dp)
         ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Food Labels", style = MaterialTheme.typography.headlineSmall, color = Color.White)
                     Text(
-                        "Define nutrition facts for specific items.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF8E8E93)
+                        "Food Labels",
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = Color.White
                     )
-
-                    Column(
-                        modifier = Modifier
-                            .weight(1f, fill = false)
-                            .verticalScroll(rememberScrollState()),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            TextField(
-                                value = itemName,
-                                onValueChange = { itemName = it },
-                                label = { Text("Item Name") },
-                                modifier = Modifier.weight(1.5f),
-                                singleLine = true,
-                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                                colors = TextFieldDefaults.colors(
-                                    focusedContainerColor = Color(0xFF2C2C2E),
-                                    unfocusedContainerColor = Color(0xFF2C2C2E),
-                                    focusedTextColor = Color.White,
-                                    unfocusedTextColor = Color.White,
-                                    focusedIndicatorColor = Color.Transparent,
-                                    unfocusedIndicatorColor = Color.Transparent
-                                ),
-                                shape = RoundedCornerShape(8.dp)
-                            )
-                            TextField(
-                                value = servingSize,
-                                onValueChange = { servingSize = it },
-                                label = { Text("Serving") },
-                                placeholder = { Text("e.g. 100g") },
-                                modifier = Modifier.weight(1f),
-                                singleLine = true,
-                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                                colors = TextFieldDefaults.colors(
-                                    focusedContainerColor = Color(0xFF2C2C2E),
-                                    unfocusedContainerColor = Color(0xFF2C2C2E),
-                                    focusedTextColor = Color.White,
-                                    unfocusedTextColor = Color.White,
-                                    focusedIndicatorColor = Color.Transparent,
-                                    unfocusedIndicatorColor = Color.Transparent
-                                ),
-                                shape = RoundedCornerShape(8.dp)
-                            )
-                        }
-
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            TextField(
-                                value = calories,
-                                onValueChange = { if (it.isEmpty() || it.toFloatOrNull() != null) calories = it },
-                                label = { Text("Calories (kcal)") },
-                                modifier = Modifier.weight(1f),
-                                singleLine = true,
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
-                                colors = TextFieldDefaults.colors(
-                                    focusedContainerColor = Color(0xFF2C2C2E),
-                                    unfocusedContainerColor = Color(0xFF2C2C2E),
-                                    focusedTextColor = Color.White,
-                                    unfocusedTextColor = Color.White,
-                                    focusedIndicatorColor = Color.Transparent,
-                                    unfocusedIndicatorColor = Color.Transparent
-                                ),
-                                shape = RoundedCornerShape(8.dp)
-                            )
-                            TextField(
-                                value = protein,
-                                onValueChange = { if (it.isEmpty() || it.toFloatOrNull() != null) protein = it },
-                                label = { Text("Protein (g)") },
-                                modifier = Modifier.weight(1f),
-                                singleLine = true,
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
-                                colors = TextFieldDefaults.colors(
-                                    focusedContainerColor = Color(0xFF2C2C2E),
-                                    unfocusedContainerColor = Color(0xFF2C2C2E),
-                                    focusedTextColor = Color.White,
-                                    unfocusedTextColor = Color.White,
-                                    focusedIndicatorColor = Color.Transparent,
-                                    unfocusedIndicatorColor = Color.Transparent
-                                ),
-                                shape = RoundedCornerShape(8.dp)
-                            )
-                        }
-
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            TextField(
-                                value = carbs,
-                                onValueChange = { if (it.isEmpty() || it.toFloatOrNull() != null) carbs = it },
-                                label = { Text("Carbs (g)") },
-                                modifier = Modifier.weight(1f),
-                                singleLine = true,
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
-                                colors = TextFieldDefaults.colors(
-                                    focusedContainerColor = Color(0xFF2C2C2E),
-                                    unfocusedContainerColor = Color(0xFF2C2C2E),
-                                    focusedTextColor = Color.White,
-                                    unfocusedTextColor = Color.White,
-                                    focusedIndicatorColor = Color.Transparent,
-                                    unfocusedIndicatorColor = Color.Transparent
-                                ),
-                                shape = RoundedCornerShape(8.dp)
-                            )
-                            TextField(
-                                value = fats,
-                                onValueChange = { if (it.isEmpty() || it.toFloatOrNull() != null) fats = it },
-                                label = { Text("Fats (g)") },
-                                modifier = Modifier.weight(1f),
-                                singleLine = true,
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
-                                colors = TextFieldDefaults.colors(
-                                    focusedContainerColor = Color(0xFF2C2C2E),
-                                    unfocusedContainerColor = Color(0xFF2C2C2E),
-                                    focusedTextColor = Color.White,
-                                    unfocusedTextColor = Color.White,
-                                    focusedIndicatorColor = Color.Transparent,
-                                    unfocusedIndicatorColor = Color.Transparent
-                                ),
-                                shape = RoundedCornerShape(8.dp)
-                            )
-                        }
-
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            TextField(
-                                value = fibre,
-                                onValueChange = { if (it.isEmpty() || it.toFloatOrNull() != null) fibre = it },
-                                label = { Text("Fibre (g)") },
-                                modifier = Modifier.weight(1f),
-                                singleLine = true,
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
-                                colors = TextFieldDefaults.colors(
-                                    focusedContainerColor = Color(0xFF2C2C2E),
-                                    unfocusedContainerColor = Color(0xFF2C2C2E),
-                                    focusedTextColor = Color.White,
-                                    unfocusedTextColor = Color.White,
-                                    focusedIndicatorColor = Color.Transparent,
-                                    unfocusedIndicatorColor = Color.Transparent
-                                ),
-                                shape = RoundedCornerShape(8.dp)
-                            )
-                            TextField(
-                                value = refinedSugar,
-                                onValueChange = { if (it.isEmpty() || it.toFloatOrNull() != null) refinedSugar = it },
-                                label = { Text("Refined Sugar (g)") },
-                                modifier = Modifier.weight(1f),
-                                singleLine = true,
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
-                                colors = TextFieldDefaults.colors(
-                                    focusedContainerColor = Color(0xFF2C2C2E),
-                                    unfocusedContainerColor = Color(0xFF2C2C2E),
-                                    focusedTextColor = Color.White,
-                                    unfocusedTextColor = Color.White,
-                                    focusedIndicatorColor = Color.Transparent,
-                                    unfocusedIndicatorColor = Color.Transparent
-                                ),
-                                shape = RoundedCornerShape(8.dp)
-                            )
-                        }
-
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            TextField(
-                                value = vitaminB,
-                                onValueChange = { if (it.isEmpty() || it.toFloatOrNull() != null) vitaminB = it },
-                                label = { Text("Vit B (mg)") },
-                                modifier = Modifier.weight(1f),
-                                singleLine = true,
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
-                                colors = TextFieldDefaults.colors(
-                                    focusedContainerColor = Color(0xFF2C2C2E),
-                                    unfocusedContainerColor = Color(0xFF2C2C2E),
-                                    focusedTextColor = Color.White,
-                                    unfocusedTextColor = Color.White,
-                                    focusedIndicatorColor = Color.Transparent,
-                                    unfocusedIndicatorColor = Color.Transparent
-                                ),
-                                shape = RoundedCornerShape(8.dp)
-                            )
-                            TextField(
-                                value = vitaminD,
-                                onValueChange = { if (it.isEmpty() || it.toFloatOrNull() != null) vitaminD = it },
-                                label = { Text("Vit D (mcg)") },
-                                modifier = Modifier.weight(1f),
-                                singleLine = true,
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
-                                colors = TextFieldDefaults.colors(
-                                    focusedContainerColor = Color(0xFF2C2C2E),
-                                    unfocusedContainerColor = Color(0xFF2C2C2E),
-                                    focusedTextColor = Color.White,
-                                    unfocusedTextColor = Color.White,
-                                    focusedIndicatorColor = Color.Transparent,
-                                    unfocusedIndicatorColor = Color.Transparent
-                                ),
-                                shape = RoundedCornerShape(8.dp)
-                            )
-                        }
-
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            TextField(
-                                value = omega,
-                                onValueChange = { if (it.isEmpty() || it.toFloatOrNull() != null) omega = it },
-                                label = { Text("Omega (mg)") },
-                                modifier = Modifier.weight(1f),
-                                singleLine = true,
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
-                                colors = TextFieldDefaults.colors(
-                                    focusedContainerColor = Color(0xFF2C2C2E),
-                                    unfocusedContainerColor = Color(0xFF2C2C2E),
-                                    focusedTextColor = Color.White,
-                                    unfocusedTextColor = Color.White,
-                                    focusedIndicatorColor = Color.Transparent,
-                                    unfocusedIndicatorColor = Color.Transparent
-                                ),
-                                shape = RoundedCornerShape(8.dp)
-                            )
-                            Box(modifier = Modifier.weight(1f)) // Spacer
-                        }
-                    }
-
-                    Button(
-                        onClick = {
-                            coroutineScope.launch {
-                                FoodLabelRepository.saveLabel(
-                                    context,
-                                    itemName,
-                                    calories.toFloatOrNull() ?: 0f,
-                                    protein.toFloatOrNull() ?: 0f,
-                                    carbs.toFloatOrNull() ?: 0f,
-                                    fats.toFloatOrNull() ?: 0f,
-                                    fibre.toFloatOrNull() ?: 0f,
-                                    refinedSugar.toFloatOrNull() ?: 0f,
-                                    vitaminB.toFloatOrNull() ?: 0f,
-                                    vitaminD.toFloatOrNull() ?: 0f,
-                                    omega.toFloatOrNull() ?: 0f,
-                                    servingSize
-                                )
-                                itemName = ""
-                                servingSize = "100g"
-                                calories = ""
-                                protein = ""
-                                carbs = ""
-                                fats = ""
-                                fibre = ""
-                                refinedSugar = ""
-                                vitaminB = ""
-                                vitaminD = ""
-                                omega = ""
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = isFormValid
-                    ) {
-                        Text("Add Label")
-                    }
-
-                    HorizontalDivider(color = Color(0xFF2C2C2E))
-
-                    LazyColumn(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(labels) { label ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .background(Color(0xFF2C2C2E), RoundedCornerShape(8.dp))
-                                    .padding(12.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(label.itemName, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                                    Text(label.labelInfo, color = Color.White, style = MaterialTheme.typography.bodySmall)
-                                }
-                                IconButton(onClick = {
-                                    coroutineScope.launch {
-                                        FoodLabelRepository.deleteLabel(context, label.itemName)
-                                    }
-                                }) {
-                                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red, modifier = Modifier.size(20.dp))
-                                }
-                            }
-                        }
-                    }
-
-                    TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.End)) {
-                        Text("Close", color = Color.White)
+                    IconButton(onClick = onDismiss) {
+                        Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
                     }
                 }
+                
+                Text(
+                    "Save label information to help AI calculate macros more accurately.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFF8E8E93),
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+
+                LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(labels) { label ->
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFF2C2C2E))
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        label.itemName,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = Color.White
+                                    )
+                                    IconButton(
+                                        onClick = {
+                                            coroutineScope.launch {
+                                                FoodLabelRepository.deleteLabel(context, label.itemName)
+                                            }
+                                        },
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red.copy(alpha = 0.6f))
+                                    }
+                                }
+                                Text(
+                                    label.labelInfo,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color(0xFF8E8E93)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Button(
+                    onClick = { showAddDialog = true },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 16.dp),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Add New Label")
+                }
+            }
         }
+    }
+
+    if (showAddDialog) {
+        var itemName by remember { mutableStateOf("") }
+        var labelInfo by remember { mutableStateOf("") }
+
+        AlertDialog(
+            onDismissRequest = { showAddDialog = false },
+            title = { Text("Add Food Label", color = Color.White) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextField(
+                        value = itemName,
+                        onValueChange = { itemName = it },
+                        label = { Text("Food Name (e.g., Whey Protein)") },
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = Color(0xFF2C2C2E),
+                            unfocusedContainerColor = Color(0xFF2C2C2E),
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White
+                        )
+                    )
+                    TextField(
+                        value = labelInfo,
+                        onValueChange = { labelInfo = it },
+                        label = { Text("Nutritional Info (e.g., 24g protein per 30g scoop)") },
+                        modifier = Modifier.height(100.dp),
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = Color(0xFF2C2C2E),
+                            unfocusedContainerColor = Color(0xFF2C2C2E),
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White
+                        )
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (itemName.isNotBlank() && labelInfo.isNotBlank()) {
+                            coroutineScope.launch {
+                                // FoodLabelRepository.addLabel(context, itemName, labelInfo)
+                                showAddDialog = false
+                            }
+                        }
+                    }
+                ) {
+                    Text("Save")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAddDialog = false }) {
+                    Text("Cancel", color = Color.White)
+                }
+            },
+            containerColor = Color(0xFF1C1C1E)
+        )
     }
 }
 
 @Composable
 fun MacroItem(label: String, value: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(text = value, style = MaterialTheme.typography.bodyMedium, color = Color.White, fontWeight = FontWeight.Bold)
         Text(text = label, style = MaterialTheme.typography.labelSmall, color = Color(0xFF8E8E93))
+        Text(text = value, style = MaterialTheme.typography.bodyMedium, color = Color.White, fontWeight = FontWeight.Bold)
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddMealDialog(
-    initialMeal: Meal? = null,
+    initialMeal: Meal?,
     onDismiss: () -> Unit,
     onSave: (Meal) -> Unit
 ) {
     var mealType by remember { mutableStateOf(initialMeal?.type ?: MealType.BREAKFAST) }
-    var items by remember { mutableStateOf(initialMeal?.items ?: listOf(MealItem(0, "", ""))) }
-    var expanded by remember { mutableStateOf(false) }
     var mealDate by remember { mutableStateOf(initialMeal?.date ?: System.currentTimeMillis()) }
-    val context = LocalContext.current
+    var items by remember { mutableStateOf(initialMeal?.items ?: listOf(MealItem(0, "", ""))) }
+    var showDatePicker by remember { mutableStateOf(false) }
+    var expanded by remember { mutableStateOf(false) }
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
-            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.9f),
             color = Color(0xFF1C1C1E),
-            modifier = Modifier.fillMaxWidth().padding(16.dp)
+            shape = RoundedCornerShape(16.dp)
         ) {
             Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                modifier = Modifier
+                    .padding(16.dp)
+                    .fillMaxSize()
             ) {
                 Text(
-                    text = if (initialMeal == null) "Add Meal" else "Edit Meal",
+                    text = if (initialMeal == null) "Log Meal" else "Edit Meal",
                     style = MaterialTheme.typography.headlineSmall,
-                    color = Color.White
+                    color = Color.White,
+                    modifier = Modifier.padding(bottom = 16.dp)
                 )
 
-                Column(
-                    modifier = Modifier
-                        .weight(1f, fill = false)
-                        .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                // Date Picker Button
+                OutlinedButton(
+                    onClick = { showDatePicker = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary)
                 ) {
-                    // Date Selection
-                    val calendar = java.util.Calendar.getInstance().apply { timeInMillis = mealDate }
-                    val dateString = java.text.SimpleDateFormat("MMM dd, yyyy", java.util.Locale.getDefault()).format(calendar.time)
-                    
-                    OutlinedButton(
-                        onClick = {
-                            android.app.DatePickerDialog(
-                                context,
-                                { _, year, month, dayOfMonth ->
-                                    val selectedCalendar = java.util.Calendar.getInstance()
-                                    selectedCalendar.set(year, month, dayOfMonth)
-                                    mealDate = selectedCalendar.timeInMillis
+                    Icon(Icons.Default.Event, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(SimpleDateFormat("MMMM d, yyyy", Locale.getDefault()).format(Date(mealDate)))
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Meal Type Selector
+                ExposedDropdownMenuBox(
+                    expanded = expanded,
+                    onExpandedChange = { expanded = !expanded },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    TextField(
+                        value = mealType.name.lowercase().replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }.replace("_", "-"),
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Meal Type", color = Color.White) },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                        colors = ExposedDropdownMenuDefaults.textFieldColors(
+                            focusedContainerColor = Color(0xFF2C2C2E),
+                            unfocusedContainerColor = Color(0xFF2C2C2E),
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            focusedLabelColor = Color.LightGray,
+                            unfocusedLabelColor = Color.LightGray,
+                            cursorColor = Color.White,
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent
+                        ),
+                        modifier = Modifier
+                            .menuAnchor()
+                            .fillMaxWidth(),
+                        shape = RoundedCornerShape(8.dp)
+                    )
+
+                    ExposedDropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false },
+                        modifier = Modifier.background(Color(0xFF2C2C2E))
+                    ) {
+                        MealType.values().forEach { type ->
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        text = type.name.lowercase().replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }.replace("_", "-"),
+                                        color = Color.White
+                                    )
                                 },
-                                calendar.get(java.util.Calendar.YEAR),
-                                calendar.get(java.util.Calendar.MONTH),
-                                calendar.get(java.util.Calendar.DAY_OF_MONTH)
-                            ).show()
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
-                    ) {
-                        Icon(Icons.Default.DateRange, contentDescription = null)
-                        Spacer(Modifier.width(8.dp))
-                        Text(dateString)
-                    }
-
-                    // Meal Type Dropdown
-                    Box {
-                        OutlinedButton(
-                            onClick = { expanded = true },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
-                        ) {
-                            Text(mealType.name.lowercase().replaceFirstChar { it.uppercase() })
-                            Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                                onClick = {
+                                    mealType = type
+                                    expanded = false
+                                },
+                                contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
+                            )
                         }
-                        DropdownMenu(
-                            expanded = expanded,
-                            onDismissRequest = { expanded = false },
-                            modifier = Modifier.background(Color(0xFF2C2C2E))
-                        ) {
-                            MealType.values().forEach { type ->
-                                DropdownMenuItem(
-                                    text = { Text(type.name.lowercase().replaceFirstChar { it.uppercase() }, color = Color.White) },
-                                    onClick = {
-                                        mealType = type
-                                        expanded = false
-                                    }
-                                )
-                            }
-                        }
-                    }
-
-                    // Meal Items
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        items.forEachIndexed { index, item ->
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                TextField(
-                                    value = item.name,
-                                    onValueChange = { name ->
-                                        val newList = items.toMutableList()
-                                        newList[index] = item.copy(name = name)
-                                        items = newList
-                                    },
-                                    label = { Text("Item") },
-                                    modifier = Modifier.weight(1f),
-                                    singleLine = true,
-                                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                                    colors = TextFieldDefaults.colors(
-                                        focusedContainerColor = Color(0xFF2C2C2E),
-                                        unfocusedContainerColor = Color(0xFF2C2C2E),
-                                        focusedTextColor = Color.White,
-                                        unfocusedTextColor = Color.White,
-                                        focusedIndicatorColor = Color.Transparent,
-                                        unfocusedIndicatorColor = Color.Transparent
-                                    ),
-                                    shape = RoundedCornerShape(8.dp)
-                                )
-                                TextField(
-                                    value = item.weight,
-                                    onValueChange = { weight ->
-                                        val newList = items.toMutableList()
-                                        newList[index] = item.copy(weight = weight)
-                                        items = newList
-                                    },
-                                    label = { Text("Weight") },
-                                    modifier = Modifier.width(100.dp),
-                                    singleLine = true,
-                                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                                    colors = TextFieldDefaults.colors(
-                                        focusedContainerColor = Color(0xFF2C2C2E),
-                                        unfocusedContainerColor = Color(0xFF2C2C2E),
-                                        focusedTextColor = Color.White,
-                                        unfocusedTextColor = Color.White,
-                                        focusedIndicatorColor = Color.Transparent,
-                                        unfocusedIndicatorColor = Color.Transparent
-                                    ),
-                                    shape = RoundedCornerShape(8.dp)
-                                )
-                            }
-                        }
-                    }
-
-                    TextButton(
-                        onClick = { items = items + MealItem(0, "", "") },
-                        modifier = Modifier.align(Alignment.CenterHorizontally)
-                    ) {
-                        Icon(Icons.Default.Add, contentDescription = null)
-                        Spacer(Modifier.width(4.dp))
-                        Text("Add Item")
                     }
                 }
 
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Items List
+                Text(
+                    text = "Items",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Color.White,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+
+                LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(items.size) { index ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            TextField(
+                                value = items[index].name,
+                                onValueChange = { newName ->
+                                    items = items.toMutableList().also {
+                                        it[index] = it[index].copy(name = newName)
+                                    }
+                                },
+                                placeholder = { Text("Food (e.g. Eggs)") },
+                                modifier = Modifier.weight(2f),
+                                colors = TextFieldDefaults.colors(
+                                    focusedContainerColor = Color(0xFF2C2C2E),
+                                    unfocusedContainerColor = Color(0xFF2C2C2E),
+                                    focusedTextColor = Color.White,
+                                    unfocusedTextColor = Color.White
+                                )
+                            )
+                            TextField(
+                                value = items[index].weight,
+                                onValueChange = { newWeight ->
+                                    items = items.toMutableList().also {
+                                        it[index] = it[index].copy(weight = newWeight)
+                                    }
+                                },
+                                placeholder = { Text("Qty (e.g. 2)") },
+                                modifier = Modifier.weight(1f),
+                                colors = TextFieldDefaults.colors(
+                                    focusedContainerColor = Color(0xFF2C2C2E),
+                                    unfocusedContainerColor = Color(0xFF2C2C2E),
+                                    focusedTextColor = Color.White,
+                                    unfocusedTextColor = Color.White
+                                )
+                            )
+                            IconButton(onClick = {
+                                if (items.size > 1) {
+                                    items = items.toMutableList().also { it.removeAt(index) }
+                                }
+                            }) {
+                                Icon(Icons.Default.RemoveCircleOutline, contentDescription = "Remove", tint = Color.Red.copy(alpha = 0.6f))
+                            }
+                        }
+                    }
+                    item {
+                        TextButton(
+                            onClick = { items = items + MealItem(0, "", "") },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = null)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Add Item")
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Action Buttons
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    TextButton(onClick = onDismiss) {
+                    TextButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f)
+                    ) {
                         Text("Cancel", color = Color.White)
                     }
                     Button(
                         onClick = {
-                            val savedMeal = initialMeal?.copy(
-                                date = mealDate,
-                                type = mealType,
-                                items = items.filter { it.name.isNotBlank() }
-                            ) ?: Meal(0, mealDate, mealType, items.filter { it.name.isNotBlank() })
-                            onSave(savedMeal)
+                            val validItems = items.filter { it.name.isNotBlank() }
+                            if (validItems.isNotEmpty()) {
+                                onSave(
+                                    Meal(
+                                        id = initialMeal?.id ?: 0,
+                                        date = mealDate,
+                                        type = mealType,
+                                        items = validItems,
+                                        macros = initialMeal?.macros ?: MealMacros()
+                                    )
+                                )
+                            }
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(8.dp)
                     ) {
-                        Text("Save", color = Color.Black)
+                        Text("Save Meal")
                     }
                 }
             }
         }
+    }
+
+    if (showDatePicker) {
+        val calendar = java.util.Calendar.getInstance().apply { timeInMillis = mealDate }
+        android.app.DatePickerDialog(
+            LocalContext.current,
+            { _, year, month, dayOfMonth ->
+                val selectedCalendar = java.util.Calendar.getInstance()
+                selectedCalendar.set(year, month, dayOfMonth)
+                mealDate = selectedCalendar.timeInMillis
+                showDatePicker = false
+            },
+            calendar.get(java.util.Calendar.YEAR),
+            calendar.get(java.util.Calendar.MONTH),
+            calendar.get(java.util.Calendar.DAY_OF_MONTH)
+        ).show()
     }
 }

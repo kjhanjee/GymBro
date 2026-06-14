@@ -876,11 +876,7 @@ fun ExerciseCardItem(
                                             if (newValue.isNotEmpty()) {
                                                 val rir = newValue.toIntOrNull()
                                                 val newSets = routineExercise.sets.toMutableList()
-                                                val updatedType = when {
-                                                    rir == 0 -> WorkoutSet.SetType.FAILURE
-                                                    rir != null && rir > 2 -> WorkoutSet.SetType.WARMUP
-                                                    else -> setConfig.type
-                                                }
+                                                val updatedType = WorkoutSet.getTypeForRir(rir, setConfig.type)
                                                 newSets[index] = setConfig.copy(targetRir = rir, type = updatedType)
                                                 onUpdateSets(newSets)
                                             }

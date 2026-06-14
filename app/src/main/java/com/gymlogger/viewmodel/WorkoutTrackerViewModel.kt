@@ -118,12 +118,16 @@ class WorkoutTrackerViewModel : ViewModel() {
                         id = routineEx.id
                     )
                     routineEx.sets.forEach { setConfig ->
+                        val initialRir = if (setConfig.targetRir == null) "" else setConfig.targetRir.toString()
+                        val rirInt = initialRir.toIntOrNull()
+                        val calculatedType = WorkoutSet.getTypeForRir(rirInt, setConfig.type)
+                        
                         exerciseState.sets.add(
                             SetState(
                                 baseWeight = setConfig.targetWeight,
                                 reps = if (setConfig.targetReps == null || setConfig.targetReps == 0) "" else setConfig.targetReps.toString(),
-                                rir = if (setConfig.targetRir == null) "" else setConfig.targetRir.toString(),
-                                type = setConfig.type
+                                rir = initialRir,
+                                type = calculatedType
                             )
                         )
                     }

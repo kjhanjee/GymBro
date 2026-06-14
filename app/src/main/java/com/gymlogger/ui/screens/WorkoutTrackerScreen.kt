@@ -806,7 +806,13 @@ fun SetRow(
         Box(modifier = Modifier.weight(0.8f).padding(horizontal = 4.dp)) {
             BasicTextField(
                 value = setState.rir,
-                onValueChange = { if (it.length <= 2) setState.rir = it },
+                onValueChange = { 
+                    if (it.length <= 2) {
+                        setState.rir = it
+                        val rirInt = it.toIntOrNull()
+                        setState.type = WorkoutSet.getTypeForRir(rirInt, setState.type)
+                    }
+                },
                 textStyle = TextStyle(
                     color = if (setState.isCompleted) MaterialTheme.colorScheme.primary else Color.White,
                     fontSize = 16.sp,

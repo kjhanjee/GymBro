@@ -366,9 +366,9 @@ object MacroCalculator {
         val prompt = """
             <|turn>system
             You are an expert Dietician. You need to analyze the meals provided by the user and provide the output in the below JSON format: 
-            {"calories": float, "protein": float, "carbs": float, "fats": float, "fibre": float, "sugar": float, "vitaminB": float, "vitaminD": float, "omega": float}
+            {"calories": float, "protein": float, "carbs": float, "fats": float, "fibre": float, "sugar": float, "vitaminB": float, "vitaminD": float, "omega": float, "vitaminC": float, "iron": float, "potassium": float, "magnesium": float, "sodium": float}
             Do not include any explanation or markdown. 
-            Units: calories in kcal, protein/carbs/fats/fibre/sugar in grams (sugar field refers to total refined sugar), vitaminB in mg, vitaminD in mcg, omega in mg.
+            Units: calories in kcal, protein/carbs/fats/fibre/sugar in grams (sugar field refers to total refined sugar), vitaminB in mg, vitaminD in mcg, omega in mg, vitaminC in mg, iron in mg, potassium in mg, magnesium in mg, sodium in mg.
             Use the below label information for analyzing the meals provided by the user, if the corresponding items are present in the meal logged: 
             $labelsInfo
             <|think|><turn|>

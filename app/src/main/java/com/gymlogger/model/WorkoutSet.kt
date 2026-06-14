@@ -24,6 +24,20 @@ data class WorkoutSet(
         DROP_SET("Drop Set", "D")
     }
 
+    companion object {
+        fun getTypeForRir(rir: Int?, currentType: SetType): SetType {
+            if (rir == null) return currentType
+            if (currentType == SetType.DROP_SET) return SetType.DROP_SET
+            
+            return when {
+                rir == 0 -> SetType.FAILURE
+                rir in 1..3 -> SetType.NORMAL
+                rir >= 4 -> SetType.WARMUP
+                else -> currentType
+            }
+        }
+    }
+
     @Serializable
     enum class InputType {
         REPS,
