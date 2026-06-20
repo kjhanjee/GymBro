@@ -65,14 +65,10 @@ kotlin {
                 implementation("com.google.ai.edge.litertlm:litertlm-android:0.10.0")
             }
         }
-        val iosMain by getting {
-            dependencies {
-            }
-        }
     }
 }
 
-android {
+configure<com.android.build.api.dsl.ApplicationExtension> {
     namespace = "com.gymlogger"
     compileSdk = 36
 
