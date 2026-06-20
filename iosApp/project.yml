@@ -1,6 +1,10 @@
 name: iosApp
 options:
   bundleIdPrefix: com.gymlogger
+packages:
+  llama:
+    url: https://github.com/ggerganov/llama.cpp.git
+    branch: master
 targets:
   iosApp:
     type: application
@@ -15,3 +19,4 @@ targets:
     dependencies:
       - framework: ../app/build/bin/iosArm64/releaseFramework/ComposeApp.framework
         embed: true
+      - package: llama

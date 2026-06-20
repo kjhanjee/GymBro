@@ -109,7 +109,10 @@ configure<com.android.build.api.dsl.ApplicationExtension> {
 
 dependencies {
     debugImplementation(compose.uiTooling)
-    ksp("androidx.room:room-compiler:2.7.0-alpha01")
+    add("kspAndroid", "androidx.room:room-compiler:2.7.0-alpha01")
+    add("kspIosX64", "androidx.room:room-compiler:2.7.0-alpha01")
+    add("kspIosArm64", "androidx.room:room-compiler:2.7.0-alpha01")
+    add("kspIosSimulatorArm64", "androidx.room:room-compiler:2.7.0-alpha01")
 }
 
 room {
