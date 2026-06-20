@@ -29,8 +29,6 @@ import kotlinx.coroutines.launch
 
 
 
-}
-
 @Composable
 fun HomeScreen(
     onNavigateToCreateRoutine: () -> Unit,
