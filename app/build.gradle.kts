@@ -65,8 +65,7 @@ kotlin {
                 implementation("com.google.ai.edge.litertlm:litertlm-android:0.10.0")
             }
         }
-        val iosMain by creating {
-            dependsOn(commonMain)
+        val iosMain by getting {
             dependencies {
             }
         }
