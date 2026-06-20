@@ -29,7 +29,9 @@ jobs:
           xcode-version: latest-stable
 
       - name: Build KMP Shared Framework
-        run: ./gradlew :app:embedAndSignAppleFrameworkForXcode
+        run: |
+          chmod +x ./gradlew
+          ./gradlew :app:embedAndSignAppleFrameworkForXcode
         env:
           CONFIGURATION: Release
           ARCHS: arm64
