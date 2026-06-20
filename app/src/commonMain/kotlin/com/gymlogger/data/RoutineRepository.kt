@@ -18,8 +18,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import java.util.UUID
-
 object RoutineRepository {
     private val ROUTINES_KEY = stringPreferencesKey("routines_list")
     private val WORKOUTS_KEY = stringPreferencesKey("completed_workouts")
@@ -529,7 +527,7 @@ object RoutineRepository {
         return Workout(
             id = id,
             routine = routine,
-            date = System.currentTimeMillis(),
+            date = com.gymlogger.util.getCurrentTimeMillis(),
             sets = routine.exercises.flatMap { exercise ->
                 exercise.sets.map { setConfig ->
                     WorkoutSet(

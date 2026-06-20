@@ -16,7 +16,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
+
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -70,7 +70,7 @@ data class OptimizedSet(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WorkoutOptimizerScreen(onNavigateBack: () -> Unit) {
-    val context = LocalContext.current
+
     val coroutineScope = rememberCoroutineScope()
     val isAiReady by MacroCalculator.isReady.collectAsStateWithLifecycle()
     val weightUnit by SettingsRepository.getWeightUnit().collectAsStateWithLifecycle(initialValue = SettingsRepository.WeightUnit.KG)
@@ -299,7 +299,7 @@ fun WorkoutOptimizerScreen(onNavigateBack: () -> Unit) {
                                     val recentSets = setPairs.filter { it.second == latestDate }.map { it.first }
                                     val recentAvgWeight = recentSets.mapNotNull { it.weight }.average()
                                     val recentAvgReps = recentSets.mapNotNull { it.reps }.average()
-                                    "$name: Max ${"%.1f".format(maxWeight)}$unit | Last Session: ${"%.1f".format(recentAvgWeight)}$unit x ${"%.1f".format(recentAvgReps)} reps"
+                                    "$name: Max ${com.gymlogger.util.formatFloat(maxWeight, 1)}$unit | Last Session: ${com.gymlogger.util.formatFloat(recentAvgWeight.toFloat(), 1)}$unit x ${com.gymlogger.util.formatFloat(recentAvgReps.toFloat(), 1)} reps"
                                 }.joinToString("\n")
 
                             val prompt = """
@@ -367,7 +367,7 @@ fun WorkoutOptimizerScreen(onNavigateBack: () -> Unit) {
                                         errorMessage = "AI output did not contain a valid JSON object."
                                     }
                                 } catch (e: Exception) {
-                                    errorMessage = "Error parsing workout: ${e.localizedMessage}"
+                                    errorMessage = "Error parsing workout: ${e.message}"
                                 }
                             } else {
                                 errorMessage = "AI failed to respond."
@@ -403,7 +403,7 @@ fun WorkoutOptimizerScreen(onNavigateBack: () -> Unit) {
                             coroutineScope.launch {
                                 val routineExercises = workout.exercises.mapIndexed { index, optEx ->
                                     val dbEx = ExerciseRepository.exerciseDatabase.find { it.name.lowercase() == optEx.exerciseName.lowercase() }
-                                    val exerciseId = dbEx?.id ?: (System.currentTimeMillis() + index)
+                                    val exerciseId = dbEx?.id ?: (com.gymlogger.util.getCurrentTimeMillis() + index)
                                     Routine.RoutineExercise(
                                         id = 0,
                                         exerciseId = exerciseId,
@@ -433,7 +433,7 @@ fun WorkoutOptimizerScreen(onNavigateBack: () -> Unit) {
                                     name = workout.routineName,
                                     exercises = routineExercises,
                                     description = workout.description,
-                                    createdAt = System.currentTimeMillis()
+                                    createdAt = com.gymlogger.util.getCurrentTimeMillis()
                                 )
                                 RoutineRepository.createRoutine(newRoutine)
                                 onNavigateBack()

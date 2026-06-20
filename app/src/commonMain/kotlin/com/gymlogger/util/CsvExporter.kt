@@ -1,14 +1,13 @@
 package com.gymlogger.util
 
 import com.gymlogger.model.Meal
-import java.text.SimpleDateFormat
-import java.util.*
+
 
 object CsvExporter {
 
     fun exportMealsToCsv(meals: List<Meal>): String {
-        val dateFormatter = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-        val timeFormatter = SimpleDateFormat("HH:mm", Locale.getDefault())
+        val dateFormatPattern = "yyyy-MM-dd"
+        val timeFormatPattern = "HH:mm"
         val csvBuilder = StringBuilder()
         
         // Header
@@ -18,9 +17,8 @@ object CsvExporter {
         val sortedMeals = meals.sortedBy { it.date }
         
         for (meal in sortedMeals) {
-            val date = Date(meal.date)
-            val dateStr = dateFormatter.format(date)
-            val timeStr = timeFormatter.format(date)
+            val dateStr = com.gymlogger.util.formatTimestamp(meal.date, dateFormatPattern)
+            val timeStr = com.gymlogger.util.formatTimestamp(meal.date, timeFormatPattern)
             val mealTypeStr = meal.type.name
             
             if (meal.items.isEmpty()) {

@@ -20,7 +20,7 @@ import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
+
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.SpanStyle
@@ -62,7 +62,6 @@ data class ChatMessage(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AiTrainerChatScreen(onNavigateBack: () -> Unit) {
-    val context = LocalContext.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
     val scope = rememberCoroutineScope()
@@ -88,7 +87,7 @@ fun AiTrainerChatScreen(onNavigateBack: () -> Unit) {
                 messages.clear()
                 messages.addAll(restored)
             } catch (e: Exception) {
-                android.util.Log.e("AiTrainerChatScreen", "Failed to restore chat history", e)
+                com.gymlogger.util.logError("AiTrainerChatScreen", "Failed to restore chat history", e)
             }
         }
 
@@ -113,7 +112,7 @@ fun AiTrainerChatScreen(onNavigateBack: () -> Unit) {
         }
     }
 
-    suspend fun getSystemPrompt(context: android.content.Context): String {
+    suspend fun getSystemPrompt(): String {
         val height = SettingsRepository.getHeight().first()
         val weight = SettingsRepository.getWeight().first()
         val gender = SettingsRepository.getGender().first()
@@ -212,7 +211,7 @@ fun AiTrainerChatScreen(onNavigateBack: () -> Unit) {
 
             // Ensure system message is present
             if (messages.none { it.role == ChatRole.SYSTEM }) {
-                val systemPrompt = getSystemPrompt(context)
+                val systemPrompt = getSystemPrompt()
                 messages.add(0, ChatMessage(systemPrompt, ChatRole.SYSTEM))
             }
 

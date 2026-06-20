@@ -49,7 +49,7 @@ fun ExerciseDetailScreen(
 
     val exerciseData = exercise!!
 
-    val context = androidx.compose.ui.platform.LocalContext.current
+
     val weightUnit by SettingsRepository.getWeightUnit().collectAsState(initial = SettingsRepository.WeightUnit.LBS)
     
     val completedWorkouts by RoutineRepository.getCompletedWorkouts().collectAsState(initial = emptyList())
@@ -68,12 +68,7 @@ fun ExerciseDetailScreen(
 
     val activeDaysOfWeek = remember(exerciseSets) {
         exerciseSets.map { (_, date) ->
-            val calendar = java.util.Calendar.getInstance()
-            calendar.timeInMillis = date
-            // Calendar.DAY_OF_WEEK: 1=Sun, 2=Mon, ..., 7=Sat
-            // We want 0=Mon, 1=Tue, ..., 6=Sun
-            val day = calendar.get(java.util.Calendar.DAY_OF_WEEK)
-            if (day == java.util.Calendar.SUNDAY) 6 else day - 2
+            com.gymlogger.util.getDayOfWeek(date)
         }.distinct()
     }
 

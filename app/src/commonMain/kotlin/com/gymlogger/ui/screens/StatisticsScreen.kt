@@ -31,7 +31,7 @@ import com.gymlogger.data.RoutineRepository
 import com.gymlogger.util.UnitConverter
 import androidx.compose.ui.platform.LocalContext
 import com.gymlogger.ui.components.GymBroTopAppBar
-import java.util.*
+
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -60,27 +60,18 @@ fun StatisticsScreen(
     } else 0
 
     // Current Week Stats Calculation
-    val calendar = Calendar.getInstance().apply {
-        firstDayOfWeek = Calendar.MONDAY
-        set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
-        set(Calendar.HOUR_OF_DAY, 0)
-        set(Calendar.MINUTE, 0)
-        set(Calendar.SECOND, 0)
-        set(Calendar.MILLISECOND, 0)
-    }
-    val startOfWeek = calendar.timeInMillis
-    calendar.add(Calendar.DAY_OF_YEAR, 7)
-    val endOfWeek = calendar.timeInMillis
+    val startOfWeek = com.gymlogger.util.getStartOfWeekMillis()
+    val endOfWeek = startOfWeek + 7 * 24 * 60 * 60 * 1000L
 
     val weekMeals = meals.filter { it.date in startOfWeek until endOfWeek }
     val weekWorkouts = workouts.filter { it.date in startOfWeek until endOfWeek }
 
     val daysWithMeals = weekMeals.map { 
-        Calendar.getInstance().apply { timeInMillis = it.date }.get(Calendar.DAY_OF_YEAR)
+        com.gymlogger.util.getDayOfWeek(it.date)
     }.distinct().size.coerceAtLeast(1)
 
     val daysWithWorkouts = weekWorkouts.map {
-        Calendar.getInstance().apply { timeInMillis = it.date }.get(Calendar.DAY_OF_YEAR)
+        com.gymlogger.util.getDayOfWeek(it.date)
     }.distinct().size.coerceAtLeast(1)
 
     Scaffold(
@@ -133,16 +124,15 @@ fun StatisticsScreen(
                 val dayNames = listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
                 val weeklyData = dayNames.map { dayName ->
                     val setsCount = weekWorkouts.filter { workout ->
-                        val workoutCal = Calendar.getInstance().apply { timeInMillis = workout.date }
-                        val dayOfWeek = workoutCal.get(Calendar.DAY_OF_WEEK)
+                        val dayOfWeek = com.gymlogger.util.getDayOfWeek(workout.date)
                         val targetDayOfWeek = when(dayName) {
-                            "Sun" -> Calendar.SUNDAY
-                            "Mon" -> Calendar.MONDAY
-                            "Tue" -> Calendar.TUESDAY
-                            "Wed" -> Calendar.WEDNESDAY
-                            "Thu" -> Calendar.THURSDAY
-                            "Fri" -> Calendar.FRIDAY
-                            "Sat" -> Calendar.SATURDAY
+                            "Mon" -> 0
+                            "Tue" -> 1
+                            "Wed" -> 2
+                            "Thu" -> 3
+                            "Fri" -> 4
+                            "Sat" -> 5
+                            "Sun" -> 6
                             else -> -1
                         }
                         dayOfWeek == targetDayOfWeek
@@ -322,7 +312,7 @@ fun CurrentWeekAveragesCard(weekMeals: List<Meal>, weekWorkouts: List<Workout>) 
             ) {
                 MacroStatColumn("Calories", "${avgCalories.toInt()}", "kcal")
                 MacroStatColumn("Protein", "${avgProtein.toInt()}", "g")
-                MacroStatColumn("Sets", String.format(Locale.getDefault(), "%.1f", avgSets), "sets")
+                MacroStatColumn("Sets", com.gymlogger.util.formatFloat(avgSets.toFloat(), 1), "sets")
             }
             
             Spacer(modifier = Modifier.height(12.dp))
@@ -494,8 +484,8 @@ fun MicronutritionalBreakdownSection(weekMeals: List<Meal>, daysLogged: Int) {
             ) {
                 MacroStatColumn("Fibre", "${avgFibre.toInt()}", "g")
                 MacroStatColumn("Ref. Sugar", "${avgSugar.toInt()}", "g")
-                MacroStatColumn("Vit B", String.format(Locale.getDefault(), "%.1f", avgVitB), "mg")
-                MacroStatColumn("Vit D", String.format(Locale.getDefault(), "%.1f", avgVitD), "mcg")
+                MacroStatColumn("Vit B", com.gymlogger.util.formatFloat(avgVitB.toFloat(), 1), "mg")
+                MacroStatColumn("Vit D", com.gymlogger.util.formatFloat(avgVitD.toFloat(), 1), "mcg")
                 MacroStatColumn("Omega", "${avgOmega.toInt()}", "mg")
             }
             
@@ -557,10 +547,10 @@ fun MicronutritionalBreakdownSection(weekMeals: List<Meal>, daysLogged: Int) {
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     SmallMacroText("Fib: ${typeFibre.toInt()}g")
                                     SmallMacroText("Sug: ${typeSugar.toInt()}g")
-                                    SmallMacroText("B: ${String.format(Locale.getDefault(), "%.1f", typeVitB)}mg")
+                                    SmallMacroText("B: ${com.gymlogger.util.formatFloat(typeVitB.toFloat(), 1)}mg")
                                 }
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    SmallMacroText("D: ${String.format(Locale.getDefault(), "%.1f", typeVitD)}mcg")
+                                    SmallMacroText("D: ${com.gymlogger.util.formatFloat(typeVitD.toFloat(), 1)}mcg")
                                     SmallMacroText("Omg: ${typeOmega.toInt()}mg")
                                     SmallMacroText("C: ${typeVitC.toInt()}mg")
                                 }
@@ -706,7 +696,7 @@ fun WeeklyActivityChart(
             modifier = Modifier.padding(16.dp)
         ) {
             Text(
-                text = "Weekly Activity (Avg: ${String.format(Locale.getDefault(), "%.1f", avgSets)} sets/day)",
+                text = "Weekly Activity (Avg: ${com.gymlogger.util.formatFloat(avgSets.toFloat(), 1)} sets/day)",
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.White

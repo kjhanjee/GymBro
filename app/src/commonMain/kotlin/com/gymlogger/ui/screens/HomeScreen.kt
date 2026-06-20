@@ -27,8 +27,7 @@ import com.gymlogger.ui.components.GymBroTopAppBar
 import com.gymlogger.ui.theme.GymBroTheme
 import kotlinx.coroutines.launch
 
-import java.text.SimpleDateFormat
-import java.util.*
+
 
 @Preview(showBackground = true)
 @Composable
@@ -213,19 +212,12 @@ fun HomeScreen(
                             .maxByOrNull { it.date }
                         
                         val lastCompleted = if (lastWorkout != null) {
-                            val sdf = SimpleDateFormat("MMM d", Locale.getDefault())
-                            val calendar = Calendar.getInstance()
-                            val today = calendar.get(Calendar.DAY_OF_YEAR)
-                            val thisYear = calendar.get(Calendar.YEAR)
-                            
-                            calendar.timeInMillis = lastWorkout.date
-                            val workoutDay = calendar.get(Calendar.DAY_OF_YEAR)
-                            val workoutYear = calendar.get(Calendar.YEAR)
-                            
-                            if (today == workoutDay && thisYear == workoutYear) {
+                            val currentTime = com.gymlogger.util.getCurrentTimeMillis()
+                            val diff = currentTime - lastWorkout.date
+                            if (diff < 86400000L * 2L && com.gymlogger.util.getDayOfWeek(currentTime) == com.gymlogger.util.getDayOfWeek(lastWorkout.date)) {
                                 "Today"
                             } else {
-                                sdf.format(Date(lastWorkout.date))
+                                com.gymlogger.util.formatTimestamp(lastWorkout.date, "MMM d")
                             }
                         } else "Never"
 

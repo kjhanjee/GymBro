@@ -14,7 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
+
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -22,8 +22,7 @@ import com.gymlogger.data.RoutineRepository
 import com.gymlogger.data.Workout
 import com.gymlogger.ui.components.GymBroTopAppBar
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.*
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,8 +31,7 @@ fun RecentWorkoutsScreen(
     onNavigateToWorkoutDetail: (Long) -> Unit
 ) {
     val workouts by RoutineRepository.completedWorkouts.collectAsState()
-    val dateFormatter = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
-    val context = LocalContext.current
+    val dateFormatPattern = "MMM dd, yyyy"
     val scope = rememberCoroutineScope()
     
     var workoutToDelete by remember { mutableStateOf<Workout?>(null) }
@@ -101,7 +99,7 @@ fun RecentWorkoutsScreen(
                 items(workouts.reversed()) { workout ->
                     WorkoutListItem(
                         name = workout.routine.name,
-                        date = dateFormatter.format(Date(workout.date)),
+                        date = com.gymlogger.util.formatTimestamp(workout.date, dateFormatPattern),
                         sets = workout.sets.size,
                         onClick = { onNavigateToWorkoutDetail(workout.id) },
                         onDelete = { workoutToDelete = workout }

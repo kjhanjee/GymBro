@@ -19,7 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gymlogger.services.WorkoutServiceController
-import java.util.Locale
+
 
 @Composable
 fun WorkoutMiniCard(
@@ -48,10 +48,15 @@ fun WorkoutMiniCard(
         val h = secondsElapsed / 3600
         val m = (secondsElapsed % 3600) / 60
         val s = secondsElapsed % 60
+        
+        val hStr = h.toString().padStart(2, '0')
+        val mStr = m.toString().padStart(2, '0')
+        val sStr = s.toString().padStart(2, '0')
+
         if (h > 0) {
-            String.format(Locale.getDefault(), "%02d:%02d:%02d", h, m, s)
+            "$hStr:$mStr:$sStr"
         } else {
-            String.format(Locale.getDefault(), "%02d:%02d", m, s)
+            "$mStr:$sStr"
         }
     }
 
@@ -93,7 +98,9 @@ fun WorkoutMiniCard(
                 if (isRestTimerActive) {
                     val rm = restSecondsRemaining / 60
                     val rs = restSecondsRemaining % 60
-                    val restText = String.format(Locale.getDefault(), "%02d:%02d", rm, rs)
+                    val rmStr = rm.toString().padStart(2, '0')
+                    val rsStr = rs.toString().padStart(2, '0')
+                    val restText = "$rmStr:$rsStr"
                     
                     Surface(
                         color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),

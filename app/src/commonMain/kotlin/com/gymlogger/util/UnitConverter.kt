@@ -1,6 +1,6 @@
 package com.gymlogger.util
 
-import java.util.Locale
+
 import com.gymlogger.data.SettingsRepository
 
 object UnitConverter {
@@ -14,7 +14,7 @@ object UnitConverter {
         return if (value % 1.0 == 0.0) {
             value.toInt().toString()
         } else {
-            String.format(Locale.US, "%.1f", value)
+            com.gymlogger.util.formatFloat(value, 1)
         }
     }
 
@@ -26,7 +26,7 @@ object UnitConverter {
             if (minutes % 1.0 == 0.0) {
                 minutes.toInt().toString()
             } else {
-                String.format(Locale.US, "%.1f", minutes)
+                com.gymlogger.util.formatFloat(minutes.toFloat(), 1)
             }
         }
     }

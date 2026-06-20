@@ -21,7 +21,7 @@ object ExerciseRepository : IExerciseRepository {
     }
 
     private fun seedDatabase() {
-        CoroutineScope(Dispatchers.IO).launch {
+        CoroutineScope(Dispatchers.Default).launch {
             exerciseDao?.let { dao ->
                 val existing = dao.getAllExercises().first()
                 if (existing.isEmpty()) {

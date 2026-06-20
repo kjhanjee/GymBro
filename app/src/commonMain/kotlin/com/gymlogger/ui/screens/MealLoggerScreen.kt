@@ -16,7 +16,7 @@ import com.gymlogger.ui.components.GymBroTopAppBar
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
+
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -24,16 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import com.gymlogger.util.CsvExporter
-import java.io.OutputStreamWriter
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import com.gymlogger.ai.MacroCalculator
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+
 import com.gymlogger.data.MealRepository
 import com.gymlogger.data.FoodLabelRepository
 import com.gymlogger.model.Meal
@@ -41,6 +32,8 @@ import com.gymlogger.model.MealItem
 import com.gymlogger.model.MealMacros
 import com.gymlogger.model.MealType
 import androidx.compose.ui.tooling.preview.Preview
+import kotlinx.coroutines.Dispatchers
+import com.gymlogger.ai.MacroCalculator
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -49,7 +42,7 @@ import kotlinx.coroutines.launch
 fun MealLoggerScreen(onNavigateBack: () -> Unit) {
     val meals by MealRepository.meals.collectAsStateWithLifecycle(initialValue = emptyList())
     val isAiReady by MacroCalculator.isReady.collectAsStateWithLifecycle()
-    val context = LocalContext.current
+
     val coroutineScope = rememberCoroutineScope()
     var showAddMealDialog by remember { mutableStateOf(false) }
     var editingMeal by remember { mutableStateOf<Meal?>(null) }
@@ -57,38 +50,11 @@ fun MealLoggerScreen(onNavigateBack: () -> Unit) {
     var isSaving by remember { mutableStateOf(false) }
     var isInitializingAi by remember { mutableStateOf(false) }
 
-    val createDocumentLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.CreateDocument("text/csv")
-    ) { uri ->
-        uri?.let {
-            coroutineScope.launch {
-                val latestMeals = MealRepository.meals.value
-                withContext(Dispatchers.IO) {
-                    try {
-                        context.contentResolver.openOutputStream(it)?.use { outputStream ->
-                            OutputStreamWriter(outputStream, java.nio.charset.StandardCharsets.UTF_8).use { writer ->
-                                writer.write(CsvExporter.exportMealsToCsv(latestMeals))
-                                writer.flush()
-                            }
-                        }
-                    } catch (e: Exception) {
-                        android.util.Log.e("MealLoggerScreen", "Failed to save CSV", e)
-                    }
-                }
-            }
-        }
-    }
+
 
     val groupedMeals = remember(meals) {
         meals.groupBy {
-            val cal = java.util.Calendar.getInstance().apply {
-                timeInMillis = it.date
-                set(java.util.Calendar.HOUR_OF_DAY, 0)
-                set(java.util.Calendar.MINUTE, 0)
-                set(java.util.Calendar.SECOND, 0)
-                set(java.util.Calendar.MILLISECOND, 0)
-            }
-            cal.timeInMillis
+            com.gymlogger.util.getStartOfDayMillis(it.date)
         }.mapValues { entry ->
             entry.value.groupBy { it.type }.toList().sortedBy { it.first.ordinal }
         }.toSortedMap(compareByDescending { it })
@@ -96,14 +62,7 @@ fun MealLoggerScreen(onNavigateBack: () -> Unit) {
 
     val dailyTotals = remember(meals) {
         meals.groupBy {
-            val cal = java.util.Calendar.getInstance().apply {
-                timeInMillis = it.date
-                set(java.util.Calendar.HOUR_OF_DAY, 0)
-                set(java.util.Calendar.MINUTE, 0)
-                set(java.util.Calendar.SECOND, 0)
-                set(java.util.Calendar.MILLISECOND, 0)
-            }
-            cal.timeInMillis
+            com.gymlogger.util.getStartOfDayMillis(it.date)
         }.mapValues { entry ->
             entry.value.fold(MealMacros()) { acc, meal -> acc + meal.macros }
         }
@@ -151,16 +110,7 @@ fun MealLoggerScreen(onNavigateBack: () -> Unit) {
                             tint = Color.White
                         )
                     }
-                    IconButton(onClick = { 
-                        val fileName = "meal_logs_${SimpleDateFormat("yyyyMMdd_HHmm", Locale.getDefault()).format(Date())}.csv"
-                        createDocumentLauncher.launch(fileName)
-                    }) {
-                        Icon(
-                            imageVector = Icons.Default.Download,
-                            contentDescription = "Download CSV",
-                            tint = Color.White
-                        )
-                    }
+                    com.gymlogger.util.ExportCsvIconButton(mealsProvider = { MealRepository.meals.value })
                     IconButton(onClick = { showLabelDialog = true }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.Label,
@@ -345,8 +295,7 @@ fun MealCard(meal: Meal, onEdit: () -> Unit, onDelete: () -> Unit) {
                             color = Color.White,
                             fontWeight = FontWeight.Medium
                         )
-                        val timeString = SimpleDateFormat("h:mm a", Locale.getDefault())
-                            .format(Date(meal.date))
+                        val timeString = com.gymlogger.util.formatTimestamp(meal.date, "h:mm a")
                         Text(
                             text = "$timeString • ${meal.macros.calories.toInt()} kcal",
                             style = MaterialTheme.typography.labelSmall,
@@ -414,8 +363,8 @@ fun MealCard(meal: Meal, onEdit: () -> Unit, onDelete: () -> Unit) {
                 ) {
                     MacroItem("Fibre", "${meal.macros.fibre.toInt()}g")
                     MacroItem("Sugar", "${meal.macros.refinedSugar.toInt()}g")
-                    MacroItem("Vit B", "${String.format(Locale.getDefault(), "%.1f", meal.macros.vitaminB)}mg")
-                    MacroItem("Vit D", "${String.format(Locale.getDefault(), "%.1f", meal.macros.vitaminD)}mcg")
+                    MacroItem("Vit B", "${com.gymlogger.util.formatFloat(meal.macros.vitaminB.toFloat(), 1)}mg")
+                    MacroItem("Vit D", "${com.gymlogger.util.formatFloat(meal.macros.vitaminD.toFloat(), 1)}mcg")
                     MacroItem("Omega", "${meal.macros.omega.toInt()}mg")
                 }
                 
@@ -497,7 +446,7 @@ fun EditMealDialogPreview() {
         AddMealDialog(
             initialMeal = Meal(
                 id = 1,
-                date = System.currentTimeMillis(),
+                date = com.gymlogger.util.getCurrentTimeMillis(),
                 type = MealType.BREAKFAST,
                 items = listOf(MealItem(1, "Chai", "150ml")),
                 macros = MealMacros()
@@ -547,8 +496,8 @@ fun DailyTotalsCard(totals: MealMacros) {
             ) {
                 MacroItem("Fibre", "${totals.fibre.toInt()}g")
                 MacroItem("Sugar", "${totals.refinedSugar.toInt()}g")
-                MacroItem("Vit B", "${String.format(Locale.getDefault(), "%.1f", totals.vitaminB)}mg")
-                MacroItem("Vit D", "${String.format(Locale.getDefault(), "%.1f", totals.vitaminD)}mcg")
+                MacroItem("Vit B", "${com.gymlogger.util.formatFloat(totals.vitaminB.toFloat(), 1)}mg")
+                MacroItem("Vit D", "${com.gymlogger.util.formatFloat(totals.vitaminD.toFloat(), 1)}mcg")
                 MacroItem("Omega", "${totals.omega.toInt()}mg")
             }
 
@@ -569,9 +518,7 @@ fun DailyTotalsCard(totals: MealMacros) {
 
 @Composable
 fun DateHeader(dateMillis: Long) {
-    val date = Date(dateMillis)
-    val sdf = SimpleDateFormat("EEEE, MMMM d", Locale.getDefault())
-    val dateString = sdf.format(date)
+    val dateString = com.gymlogger.util.formatTimestamp(dateMillis, "EEEE, MMMM d")
     
     Text(
         text = dateString,
@@ -616,7 +563,7 @@ fun MealTypeHeader(type: MealType, isExpanded: Boolean, onToggle: () -> Unit) {
 fun FoodLabelDialog(onDismiss: () -> Unit) {
     val labels by FoodLabelRepository.labels.collectAsStateWithLifecycle(initialValue = emptyList())
     var showAddDialog by remember { mutableStateOf(false) }
-    val context = LocalContext.current
+
     val coroutineScope = rememberCoroutineScope()
 
     Dialog(onDismissRequest = onDismiss) {
@@ -778,7 +725,7 @@ fun AddMealDialog(
     onSave: (Meal) -> Unit
 ) {
     var mealType by remember { mutableStateOf(initialMeal?.type ?: MealType.BREAKFAST) }
-    var mealDate by remember { mutableStateOf(initialMeal?.date ?: System.currentTimeMillis()) }
+    var mealDate by remember { mutableStateOf(initialMeal?.date ?: com.gymlogger.util.getCurrentTimeMillis()) }
     var items by remember { mutableStateOf(initialMeal?.items ?: listOf(MealItem(0, "", ""))) }
     var showDatePicker by remember { mutableStateOf(false) }
     var expanded by remember { mutableStateOf(false) }
@@ -981,18 +928,50 @@ fun AddMealDialog(
     }
 
     if (showDatePicker) {
-        val calendar = java.util.Calendar.getInstance().apply { timeInMillis = mealDate }
-        android.app.DatePickerDialog(
-            LocalContext.current,
-            { _, year, month, dayOfMonth ->
-                val selectedCalendar = java.util.Calendar.getInstance()
-                selectedCalendar.set(year, month, dayOfMonth)
-                mealDate = selectedCalendar.timeInMillis
-                showDatePicker = false
+        val datePickerState = androidx.compose.material3.rememberDatePickerState(initialSelectedDateMillis = mealDate)
+        androidx.compose.material3.DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { mealDate = it }
+                    showDatePicker = false
+                }) {
+                    Text("OK", color = Color.White)
+                }
             },
-            calendar.get(java.util.Calendar.YEAR),
-            calendar.get(java.util.Calendar.MONTH),
-            calendar.get(java.util.Calendar.DAY_OF_MONTH)
-        ).show()
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text("Cancel", color = Color.White)
+                }
+            },
+            colors = androidx.compose.material3.DatePickerDefaults.colors(
+                containerColor = Color(0xFF1C1C1E)
+            )
+        ) {
+            androidx.compose.material3.DatePicker(
+                state = datePickerState,
+                colors = androidx.compose.material3.DatePickerDefaults.colors(
+                    containerColor = Color(0xFF1C1C1E),
+                    titleContentColor = Color.White,
+                    headlineContentColor = Color.White,
+                    weekdayContentColor = Color(0xFF8E8E93),
+                    subheadContentColor = Color(0xFF8E8E93),
+                    yearContentColor = Color.White,
+                    currentYearContentColor = MaterialTheme.colorScheme.primary,
+                    selectedYearContentColor = Color.Black,
+                    selectedYearContainerColor = MaterialTheme.colorScheme.primary,
+                    dayContentColor = Color.White,
+                    disabledDayContentColor = Color.DarkGray,
+                    selectedDayContentColor = Color.Black,
+                    disabledSelectedDayContentColor = Color.Black,
+                    selectedDayContainerColor = MaterialTheme.colorScheme.primary,
+                    disabledSelectedDayContainerColor = Color.DarkGray,
+                    todayContentColor = MaterialTheme.colorScheme.primary,
+                    todayDateBorderColor = MaterialTheme.colorScheme.primary,
+                    dayInSelectionRangeContentColor = Color.Black,
+                    dayInSelectionRangeContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+                )
+            )
+        }
     }
 }

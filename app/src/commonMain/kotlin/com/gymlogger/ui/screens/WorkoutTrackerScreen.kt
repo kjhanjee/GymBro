@@ -1,7 +1,7 @@
 package com.gymlogger.ui.screens
 
 
-import androidx.activity.compose.BackHandler
+
 import androidx.compose.animation.Animatable
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -30,7 +30,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalContext
+
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -57,7 +57,7 @@ import com.gymlogger.util.UnitConverter
 import com.gymlogger.viewmodel.WorkoutTrackerViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.util.Locale
+
 import kotlin.math.roundToInt
 
 @Stable
@@ -82,7 +82,7 @@ class ExerciseState(
     restTime: Int = 120,
     val sets: SnapshotStateList<SetState> = mutableStateListOf(),
     inputType: WorkoutSet.InputType = WorkoutSet.InputType.REPS,
-    val id: Long = System.currentTimeMillis() + (Math.random() * 1000000).toLong()
+    val id: Long = com.gymlogger.util.getCurrentTimeMillis() + (kotlin.random.Random.nextDouble() * 1000000).toLong()
 ) {
     var restTime by mutableStateOf(restTime)
     var restTimeInput by mutableStateOf("")
@@ -184,10 +184,13 @@ fun WorkoutTrackerScreen(
         val h = secondsElapsed / 3600
         val m = (secondsElapsed % 3600) / 60
         val s = secondsElapsed % 60
+        val hStr = h.toString().padStart(2, '0')
+        val mStr = m.toString().padStart(2, '0')
+        val sStr = s.toString().padStart(2, '0')
         if (h > 0) {
-            String.format(Locale.getDefault(), "%02d:%02d:%02d", h, m, s)
+            "$hStr:$mStr:$sStr"
         } else {
-            String.format(Locale.getDefault(), "%02d:%02d", m, s)
+            "$mStr:$sStr"
         }
     }
 
@@ -225,7 +228,7 @@ fun WorkoutTrackerScreen(
         }
     }
 
-    BackHandler {
+    com.gymlogger.util.PlatformBackHandler {
         showExitDialog = true
     }
 
@@ -239,7 +242,7 @@ fun WorkoutTrackerScreen(
                     .filter { it.isCompleted }
                     .mapIndexed { index, setState ->
                         com.gymlogger.model.WorkoutSet(
-                            id = System.currentTimeMillis() + index + exerciseState.exercise.id,
+                            id = com.gymlogger.util.getCurrentTimeMillis() + index + exerciseState.exercise.id,
                             exerciseId = exerciseState.exercise.id,
                             exerciseName = exerciseState.exercise.name,
                             type = setState.type,
@@ -255,13 +258,13 @@ fun WorkoutTrackerScreen(
             
             if (workoutSets.isNotEmpty()) {
                 val workout = com.gymlogger.data.Workout(
-                    id = System.currentTimeMillis(),
+                    id = com.gymlogger.util.getCurrentTimeMillis(),
                     routine = com.gymlogger.model.Routine(
                         id = routineId ?: 0L,
                         name = workoutTitle,
                         exercises = emptyList() // Simplified for now
                     ),
-                    date = System.currentTimeMillis(),
+                    date = com.gymlogger.util.getCurrentTimeMillis(),
                     sets = workoutSets
                 )
 
@@ -484,7 +487,7 @@ fun WorkoutTrackerScreen(
                     exercise = exercise,
                     restTime = 0,
                     sets = mutableStateListOf(SetState()),
-                    id = System.currentTimeMillis()
+                    id = com.gymlogger.util.getCurrentTimeMillis()
                 )
                 exerciseIndexToChange?.let { idx ->
                     exercises[idx] = newState

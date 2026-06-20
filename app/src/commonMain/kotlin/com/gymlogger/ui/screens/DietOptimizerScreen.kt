@@ -16,7 +16,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
+
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -103,7 +103,7 @@ fun DietOptimizerScreen(onNavigateBack: () -> Unit) {
     var dietPlan by remember { mutableStateOf<DietPlan?>(null) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    val context = LocalContext.current
+
 
     LaunchedEffect(Unit) {
         if (!isAiReady) {
@@ -335,7 +335,7 @@ fun DietOptimizerScreen(onNavigateBack: () -> Unit) {
                                         errorMessage = "AI output format was invalid. Please try again."
                                     }
                                 } catch (e: Exception) {
-                                    errorMessage = "Error parsing response: ${e.localizedMessage}"
+                                    errorMessage = "Error parsing response: ${e.message}"
                                 }
                             } else {
                                 errorMessage = "AI failed to respond. The model might be out of memory or still loading."

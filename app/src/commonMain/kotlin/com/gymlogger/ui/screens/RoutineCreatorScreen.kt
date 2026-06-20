@@ -34,7 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.platform.LocalContext
+
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -58,8 +58,7 @@ import com.gymlogger.model.Routine
 import com.gymlogger.model.WorkoutSet
 import com.gymlogger.ui.components.GymBroTopAppBar
 import com.gymlogger.ui.components.ExerciseSelectionDialog
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
+
 import com.gymlogger.util.ToastManager
 import kotlinx.serialization.json.Json
 import com.gymlogger.util.UnitConverter
@@ -76,35 +75,28 @@ fun RoutineCreatorScreen(
     var showingAddExerciseDialog by remember { mutableStateOf(false) }
     var exerciseIndexToChange by remember { mutableStateOf<Int?>(null) }
     val scope = rememberCoroutineScope()
-    val context = LocalContext.current
     val weightUnit by SettingsRepository.getWeightUnit().collectAsState(initial = SettingsRepository.WeightUnit.LBS)
     val timerUnit by SettingsRepository.getTimerUnit().collectAsState(initial = SettingsRepository.TimerUnit.MINUTES)
-
     val json = remember { Json { ignoreUnknownKeys = true } }
-    val importLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri ->
-        uri?.let {
+    val launchImport = com.gymlogger.util.rememberJsonImportLauncher { jsonString ->
+        if (jsonString != null) {
             try {
-                val jsonString = context.contentResolver.openInputStream(it)?.bufferedReader()?.use { it.readText() }
-                if (jsonString != null) {
-                    val importedRoutine = json.decodeFromString<Routine>(jsonString)
-                    routineName = importedRoutine.name
-                    routineDescription = importedRoutine.description ?: ""
-                    selectedExercises = importedRoutine.exercises.mapIndexed { index, ex ->
-                        // Match exercise by name to find local ID
-                        val localExercise = ExerciseRepository.exerciseDatabase.find { 
-                            it.name.equals(ex.exerciseName, ignoreCase = true) 
-                        }
-                        
-                        ex.copy(
-                            id = System.currentTimeMillis() + index,
-                            exerciseId = localExercise?.id ?: ex.exerciseId, // Fallback to source ID if not found, but ideally we'd handle "not found"
-                            sets = ex.sets.mapIndexed { setIndex, set ->
-                                set.copy(id = (setIndex + 1).toLong())
-                            }
-                        )
+                val importedRoutine = json.decodeFromString<Routine>(jsonString)
+                routineName = importedRoutine.name
+                routineDescription = importedRoutine.description ?: ""
+                selectedExercises = importedRoutine.exercises.mapIndexed { index, ex ->
+                    // Match exercise by name to find local ID
+                    val localExercise = ExerciseRepository.exerciseDatabase.find { 
+                        it.name.equals(ex.exerciseName, ignoreCase = true) 
                     }
+                    
+                    ex.copy(
+                        id = com.gymlogger.util.getCurrentTimeMillis() + index,
+                        exerciseId = localExercise?.id ?: ex.exerciseId, // Fallback to source ID if not found, but ideally we'd handle "not found"
+                        sets = ex.sets.mapIndexed { setIndex, set ->
+                            set.copy(id = (setIndex + 1).toLong())
+                        }
+                    )
                 }
             } catch (e: Exception) {
                 ToastManager.showToast("JSON format invalid")
@@ -247,7 +239,7 @@ fun RoutineCreatorScreen(
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { importLauncher.launch("application/json") },
+                        .clickable { launchImport() },
                     color = Color(0xFF1C1C1E),
                     shape = RoundedCornerShape(12.dp)
                 ) {
@@ -537,7 +529,7 @@ fun RoutineCreatorScreen(
                     exerciseIndexToChange = null
                 } else {
                     selectedExercises = selectedExercises + Routine.RoutineExercise(
-                        id = System.currentTimeMillis(),
+                        id = com.gymlogger.util.getCurrentTimeMillis(),
                         exerciseId = exercise.id,
                         exerciseName = exercise.name,
                         order = selectedExercises.size,

@@ -8,7 +8,7 @@ data class Routine(
     val name: String,
     val exercises: List<RoutineExercise>,
     val description: String? = null,
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = com.gymlogger.util.getCurrentTimeMillis()
 ) {
     @Serializable
     data class RoutineExercise(
