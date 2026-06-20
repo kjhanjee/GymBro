@@ -1,9 +1,76 @@
 plugins {
+    id("org.jetbrains.kotlin.multiplatform")
     id("com.android.application")
-    id("org.jetbrains.kotlin.android")
-    id("org.jetbrains.kotlin.plugin.serialization") version "2.0.0"
+    id("org.jetbrains.compose")
     id("org.jetbrains.kotlin.plugin.compose")
-    id("com.google.devtools.ksp") version "2.3.7"
+    id("org.jetbrains.kotlin.plugin.serialization") version "2.1.0"
+    id("com.google.devtools.ksp") version "2.1.0-1.0.29"
+    id("androidx.room") version "2.7.0-alpha01" // Need room plugin for KMP
+}
+
+kotlin {
+    androidTarget {
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        }
+    }
+    
+    listOf(
+        iosX64(),
+        iosArm64(),
+        iosSimulatorArm64()
+    ).forEach { iosTarget ->
+        iosTarget.binaries.framework {
+            baseName = "ComposeApp"
+            isStatic = true
+        }
+    }
+    
+    sourceSets {
+        val commonMain by getting {
+            dependencies {
+                implementation(compose.runtime)
+                implementation(compose.foundation)
+                implementation(compose.material3)
+                implementation(compose.ui)
+                implementation(compose.materialIconsExtended)
+                implementation(compose.components.resources)
+                implementation(compose.components.uiToolingPreview)
+                implementation("org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose:2.8.0")
+                implementation("org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose:2.8.0")
+                implementation("org.jetbrains.androidx.navigation:navigation-compose:2.7.0-alpha07")
+                
+                implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
+                implementation("androidx.datastore:datastore-preferences-core:1.1.1")
+                
+                // Room
+                implementation("androidx.room:room-runtime:2.7.0-alpha01")
+                implementation("androidx.sqlite:sqlite-bundled:2.5.0-alpha01")
+            }
+        }
+        val commonTest by getting {
+            dependencies {
+                implementation(kotlin("test"))
+            }
+        }
+        val androidMain by getting {
+            dependencies {
+                implementation("androidx.core:core-ktx:1.12.0")
+                implementation("androidx.activity:activity-compose:1.8.2")
+                implementation("androidx.appcompat:appcompat:1.6.1")
+                implementation("androidx.lifecycle:lifecycle-process:2.8.3")
+                implementation("androidx.datastore:datastore-preferences:1.1.1")
+                
+                // LiteRT for Android
+                implementation("com.google.ai.edge.litertlm:litertlm-android:0.10.0")
+            }
+        }
+        val iosMain by creating {
+            dependsOn(commonMain)
+            dependencies {
+            }
+        }
+    }
 }
 
 android {
@@ -32,11 +99,7 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions {
-        jvmTarget = "17"
-    }
     buildFeatures {
-        viewBinding = true
         compose = true
     }
     packaging {
@@ -50,49 +113,10 @@ android {
 }
 
 dependencies {
-    implementation("androidx.core:core-ktx:1.12.0")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
-    implementation("androidx.activity:activity-compose:1.8.2")
-    implementation(platform("androidx.compose:compose-bom:2024.02.00"))
-    implementation("androidx.compose.ui:ui")
-    implementation("androidx.compose.ui:ui-graphics")
-    implementation("androidx.compose.ui:ui-tooling-preview")
-    implementation("androidx.compose.material3:material3")
-    implementation("androidx.compose.material:material-icons-extended")
-    implementation("androidx.navigation:navigation-compose:2.7.6")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
-    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.7.0")
-    implementation("androidx.datastore:datastore-preferences:1.0.0")
-    implementation("androidx.activity:activity-ktx:1.8.2")
-    implementation("androidx.appcompat:appcompat:1.6.1")
+    debugImplementation(compose.uiTooling)
+    ksp("androidx.room:room-compiler:2.7.0-alpha01")
+}
 
-    // Charts
-    implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
-
-    // Coil for images
-    implementation("io.coil-kt:coil-compose:2.5.0")
-
-    // DataStore for local storage
-    implementation("androidx.datastore:datastore:1.0.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
-
-    // Room
-    val roomVersion = "2.7.0"
-    implementation("androidx.room:room-runtime:$roomVersion")
-    implementation("androidx.room:room-ktx:$roomVersion")
-    ksp("androidx.room:room-compiler:$roomVersion")
-
-    // MediaPipe Tasks GenAI for LLM Inference
-    // implementation("com.google.mediapipe:tasks-genai:0.10.33")
-    implementation("com.google.ai.edge.litertlm:litertlm-android:0.10.0")
-
-    // Lifecycle
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.7.0")
-    implementation("androidx.lifecycle:lifecycle-process:2.7.0")
-
-    debugImplementation("androidx.compose.ui:ui-tooling")
-    debugImplementation("androidx.compose.ui:ui-test-manifest")
-
-    testImplementation("junit:junit:4.13.2")
+room {
+    schemaDirectory("$projectDir/schemas")
 }

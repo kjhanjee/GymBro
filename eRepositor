@@ -1,0 +1,28 @@
+[33mcommit ae01d237d34f630b366b87669a3cf0175dcddd25[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m)[m
+Author: Karan Jhanjee <jhanjeekaran@gmail.com>
+Date:   Sat May 9 14:40:05 2026 +0530
+
+    Bug Fixes on timers, excercise repo update. General fixes on UI
+
+ app/src/main/AndroidManifest.xml                   |   2 [32m+[m
+ app/src/main/java/com/gymlogger/MainActivity.kt    |  42 [32m+[m[31m-[m
+ .../main/java/com/gymlogger/ai/MacroCalculator.kt  | 158 [32m++++++[m[31m-[m
+ .../java/com/gymlogger/data/ExerciseRepository.kt  |  76 [32m+++[m[31m-[m
+ .../com/gymlogger/data/ExerciseRepositoryImpl.kt   |  30 [32m++[m
+ .../java/com/gymlogger/data/IExerciseRepository.kt |  16 [32m+[m
+ .../main/java/com/gymlogger/data/MealRepository.kt |  22 [32m+[m[31m-[m
+ .../java/com/gymlogger/data/RoutineRepository.kt   |  37 [32m+[m[31m-[m
+ .../java/com/gymlogger/data/SettingsRepository.kt  |  29 [32m++[m
+ .../java/com/gymlogger/service/WorkoutService.kt   | 153 [32m+++++[m[31m--[m
+ .../com/gymlogger/ui/navigation/AppNavigation.kt   |  10 [32m+[m[31m-[m
+ .../gymlogger/ui/screens/AiTrainerChatScreen.kt    | 463 [32m+++++++++++++++++++++[m
+ .../gymlogger/ui/screens/ExerciseDatabaseScreen.kt |  29 [32m+[m[31m-[m
+ .../java/com/gymlogger/ui/screens/HomeScreen.kt    |   8 [32m+[m[31m-[m
+ .../com/gymlogger/ui/screens/MealLoggerScreen.kt   | 404 [32m++++++++++++[m[31m------[m
+ .../gymlogger/ui/screens/RoutineCreatorScreen.kt   |   4 [32m+[m[31m-[m
+ .../com/gymlogger/ui/screens/SettingsScreen.kt     | 208 [32m+++++++[m[31m--[m
+ .../com/gymlogger/ui/screens/StatisticsScreen.kt   |  99 [32m+++[m[31m--[m
+ .../gymlogger/ui/screens/WorkoutOptimizerScreen.kt | 113 [32m+++[m[31m--[m
+ .../gymlogger/ui/screens/WorkoutTrackerScreen.kt   |  18 [32m+[m[31m-[m
+ .../com/gymlogger/viewmodel/ExerciseViewModel.kt   |  57 [32m+++[m
+ 21 files changed, 1629 insertions(+), 349 deletions(-)
