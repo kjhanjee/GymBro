@@ -34,6 +34,7 @@ fun WorkoutDetailScreen(
     val workouts by RoutineRepository.completedWorkouts.collectAsState()
     val workout = workouts.find { it.id == workoutId }
     val dateFormatPattern = "EEEE, MMM dd, yyyy"
+    val weightUnit by SettingsRepository.getWeightUnit().collectAsState(initial = SettingsRepository.WeightUnit.LBS)
     val scope = rememberCoroutineScope()
     
     var showDeleteDialog by remember { mutableStateOf(false) }

@@ -31,7 +31,7 @@ import com.gymlogger.model.Meal
 import com.gymlogger.model.MealItem
 import com.gymlogger.model.MealMacros
 import com.gymlogger.model.MealType
-import androidx.compose.ui.tooling.preview.Preview
+
 import kotlinx.coroutines.Dispatchers
 import com.gymlogger.ai.MacroCalculator
 import kotlinx.coroutines.delay
@@ -57,7 +57,7 @@ fun MealLoggerScreen(onNavigateBack: () -> Unit) {
             com.gymlogger.util.getStartOfDayMillis(it.date)
         }.mapValues { entry ->
             entry.value.groupBy { it.type }.toList().sortedBy { it.first.ordinal }
-        }.toSortedMap(compareByDescending { it })
+        }.toList().sortedByDescending { it.first }
     }
 
     val dailyTotals = remember(meals) {
@@ -407,55 +407,7 @@ fun MealCard(meal: Meal, onEdit: () -> Unit, onDelete: () -> Unit) {
     }
 }
 
-@Preview
-@Composable
-fun DailyTotalsCardPreview() {
-    MaterialTheme {
-        DailyTotalsCard(
-            totals = MealMacros(
-                calories = 2000f,
-                protein = 150f,
-                carbs = 200f,
-                fats = 60f,
-                fibre = 30f,
-                refinedSugar = 20f,
-                vitaminB = 1.5f,
-                vitaminD = 10f,
-                omega = 1000f
-            )
-        )
-    }
-}
 
-@Preview
-@Composable
-fun AddMealDialogPreview() {
-    MaterialTheme {
-        AddMealDialog(
-            initialMeal = null,
-            onDismiss = {},
-            onSave = {}
-        )
-    }
-}
-
-@Preview
-@Composable
-fun EditMealDialogPreview() {
-    MaterialTheme {
-        AddMealDialog(
-            initialMeal = Meal(
-                id = 1,
-                date = com.gymlogger.util.getCurrentTimeMillis(),
-                type = MealType.BREAKFAST,
-                items = listOf(MealItem(1, "Chai", "150ml")),
-                macros = MealMacros()
-            ),
-            onDismiss = {},
-            onSave = {}
-        )
-    }
-}
 
 @Composable
 fun DailyTotalsCard(totals: MealMacros) {
@@ -759,7 +711,7 @@ fun AddMealDialog(
                 ) {
                     Icon(Icons.Default.Event, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(SimpleDateFormat("MMMM d, yyyy", Locale.getDefault()).format(Date(mealDate)))
+                    Text(com.gymlogger.util.formatTimestamp(mealDate, "MMMM d, yyyy"))
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -771,7 +723,7 @@ fun AddMealDialog(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     TextField(
-                        value = mealType.name.lowercase().replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }.replace("_", "-"),
+                        value = mealType.name.lowercase().replaceFirstChar { if (it.isLowerCase()) it.uppercase() else it.toString() }.replace("_", "-"),
                         onValueChange = {},
                         readOnly = true,
                         label = { Text("Meal Type", color = Color.White) },
@@ -802,7 +754,7 @@ fun AddMealDialog(
                             DropdownMenuItem(
                                 text = {
                                     Text(
-                                        text = type.name.lowercase().replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }.replace("_", "-"),
+                                        text = type.name.lowercase().replaceFirstChar { if (it.isLowerCase()) it.uppercase() else it.toString() }.replace("_", "-"),
                                         color = Color.White
                                     )
                                 },

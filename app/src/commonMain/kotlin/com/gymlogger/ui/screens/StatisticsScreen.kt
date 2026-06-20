@@ -29,7 +29,7 @@ import com.gymlogger.model.WorkoutSet
 import com.gymlogger.data.Workout
 import com.gymlogger.data.RoutineRepository
 import com.gymlogger.util.UnitConverter
-import androidx.compose.ui.platform.LocalContext
+
 import com.gymlogger.ui.components.GymBroTopAppBar
 
 
@@ -38,7 +38,7 @@ import com.gymlogger.ui.components.GymBroTopAppBar
 fun StatisticsScreen(
     onNavigateBack: () -> Unit
 ) {
-    val context = LocalContext.current
+
     val weightUnit by SettingsRepository.getWeightUnit().collectAsStateWithLifecycle(initialValue = SettingsRepository.WeightUnit.LBS)
     val timerUnit by SettingsRepository.getTimerUnit().collectAsStateWithLifecycle(initialValue = SettingsRepository.TimerUnit.MINUTES)
     val workouts by RoutineRepository.completedWorkouts.collectAsStateWithLifecycle(initialValue = emptyList())

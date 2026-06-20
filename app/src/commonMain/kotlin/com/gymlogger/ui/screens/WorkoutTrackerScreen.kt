@@ -317,7 +317,7 @@ fun WorkoutTrackerScreen(
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
-                                    text = String.format(Locale.getDefault(), "%02d:%02d", restSecondsRemaining / 60, restSecondsRemaining % 60),
+                                    text = "${(restSecondsRemaining / 60).toString().padStart(2, '0')}:${(restSecondsRemaining % 60).toString().padStart(2, '0')}",
                                     color = Color(0xFFFF9F0A),
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.Bold

@@ -17,7 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
+
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gymlogger.util.ShareManager
@@ -29,24 +29,6 @@ import kotlinx.coroutines.launch
 
 
 
-@Preview(showBackground = true)
-@Composable
-fun HomeScreenPreview() {
-    GymBroTheme {
-        HomeScreen(
-            onNavigateToCreateRoutine = {},
-            onNavigateToTrackWorkout = {},
-            onEditRoutine = {},
-            onNavigateToStatistics = {},
-            onNavigateToRecentWorkouts = {},
-            onNavigateToExercises = {},
-            onNavigateToSettings = {},
-            onNavigateToMealLogger = {},
-            onNavigateToDietOptimizer = {},
-            onNavigateToWorkoutOptimizer = {},
-            onNavigateToAiTrainer = {}
-        )
-    }
 }
 
 @Composable
