@@ -1,0 +1,17 @@
+name: iosApp
+options:
+  bundleIdPrefix: com.gymlogger
+targets:
+  iosApp:
+    type: application
+    platform: iOS
+    deploymentTarget: "14.1"
+    sources:
+      - path: iosApp
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.gymlogger.iosApp
+      INFOPLIST_FILE: iosApp/Info.plist
+      ENABLE_USER_SCRIPT_SANDBOXING: NO
+    dependencies:
+      - framework: ../app/build/bin/iosArm64/releaseFramework/ComposeApp.framework
+        embed: true
