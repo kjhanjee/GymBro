@@ -18,7 +18,7 @@ actual fun formatFloat(value: Float, decimals: Int): String {
 }
 
 actual fun formatTimestamp(timestampMillis: Long, format: String): String {
-    val date = NSDate(timeIntervalSince1970 = timestampMillis / 1000.0)
+    val date = NSDate(timeIntervalSinceReferenceDate = timestampMillis / 1000.0 - 978307200.0)
     val formatter = NSDateFormatter()
     formatter.dateFormat = format
     return formatter.stringFromDate(date)
@@ -29,7 +29,7 @@ actual fun logError(tag: String, message: String, t: Throwable?) {
 }
 
 actual fun getDayOfWeek(timestampMillis: Long): Int {
-    val date = NSDate(timeIntervalSince1970 = timestampMillis / 1000.0)
+    val date = NSDate(timeIntervalSinceReferenceDate = timestampMillis / 1000.0 - 978307200.0)
     val calendar = platform.Foundation.NSCalendar.currentCalendar
     val components = calendar.components(platform.Foundation.NSWeekdayCalendarUnit, date)
     val day = components.weekday.toInt()
@@ -55,7 +55,7 @@ actual fun getStartOfWeekMillis(): Long {
 
 actual fun getStartOfDayMillis(timestampMillis: Long): Long {
     val calendar = platform.Foundation.NSCalendar.currentCalendar
-    val date = platform.Foundation.NSDate.dateWithTimeIntervalSince1970(timestampMillis / 1000.0)
+    val date = platform.Foundation.NSDate(timeIntervalSinceReferenceDate = timestampMillis / 1000.0 - 978307200.0)
     val startOfDay = calendar.startOfDayForDate(date)
     return (startOfDay.timeIntervalSince1970 * 1000).toLong()
 }

@@ -3,6 +3,7 @@ package com.gymlogger
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import com.gymlogger.data.AppDatabase
+import com.gymlogger.data.instantiateImpl
 import platform.Foundation.NSHomeDirectory
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
@@ -12,16 +13,19 @@ import platform.Foundation.NSDocumentDirectory
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSURL
 import platform.Foundation.NSUserDomainMask
+import kotlinx.cinterop.ExperimentalForeignApi
 
 actual fun getDatabaseBuilder(): RoomDatabase.Builder<AppDatabase> {
     val dbFilePath = NSHomeDirectory() + "/gym_logger_db.db"
     return Room.databaseBuilder<AppDatabase>(
-        name = dbFilePath
+        name = dbFilePath,
+        factory = { AppDatabase::class.instantiateImpl() }
     )
 }
 
 private var dataStoreInstance: DataStore<Preferences>? = null
 
+@OptIn(ExperimentalForeignApi::class)
 actual fun getDataStore(): DataStore<Preferences> {
     return dataStoreInstance ?: PreferenceDataStoreFactory.createWithPath(
         produceFile = {
