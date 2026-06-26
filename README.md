@@ -69,7 +69,11 @@ GymBro is a modern, personal fitness tracking application built with Jetpack Com
    - Connect an Android device (API 26+) or start an emulator.
    - Use the "Run" button in Android Studio or execute the following command in the terminal:
      ```bash
+     # Linux/macOS
      ./gradlew installDebug
+     
+     # Windows
+     .\gradlew.bat installDebug
      ```
 
 ### Prerequisites

@@ -22,7 +22,9 @@ All notable changes to GymLogger.
 
 **Technical Updates:**
 - **Build Configuration**: Streamlined `build.gradle.kts` by removing AI-related configurations.
-- **CI/CD**: Added a GitHub Action to automatically compile and package the APK on every push.
+- **CI/CD**: 
+    - Added a GitHub Action to automatically compile and package the APK on every push.
+    - Fixed CI failure by adding the missing `gradlew` Unix shell script to the repository.
 
 ### App Experience & Advanced Analytics (June 14, 2026)
 

@@ -147,7 +147,12 @@ fun RoutineCreatorScreen(
             val currentDraggedIndex = selectedExercises.indexOfFirst { it.id == activeDraggingItemId }
             if (currentDraggedIndex == -1) break
             
-            val draggedItem = layoutInfo.visibleItemsInfo.find { it.index == currentDraggedIndex + 3 }
+            // +4 because there are 4 items before the exercises: 
+            // 1. Import button
+            // 2. Routine Info card
+            // 3. Add Exercise button
+            // 4. "Selected Exercises" header
+            val draggedItem = layoutInfo.visibleItemsInfo.find { it.index == currentDraggedIndex + 4 }
             
             if (draggedItem != null) {
                 val itemTop = draggedItem.offset + draggingOffset.y
@@ -452,7 +457,7 @@ fun RoutineCreatorScreen(
                                         
                                         val currentDraggedIndex = selectedExercises.indexOfFirst { it.id == exercise.id }
                                         if (currentDraggedIndex == -1) return@detectDragGesturesAfterLongPress
-                                        val absoluteIndex = currentDraggedIndex + 3
+                                        val absoluteIndex = currentDraggedIndex + 4
                                         
                                         val visibleItems = listState.layoutInfo.visibleItemsInfo
                                         val draggedItem = visibleItems.find { it.index == absoluteIndex } ?: return@detectDragGesturesAfterLongPress

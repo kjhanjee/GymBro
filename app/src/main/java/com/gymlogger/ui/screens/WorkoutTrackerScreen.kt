@@ -138,7 +138,8 @@ fun WorkoutTrackerScreen(
             val currentDraggedIndex = exercises.indexOfFirst { it.id == activeDraggingItemId }
             if (currentDraggedIndex == -1) break
             
-            val draggedItem = layoutInfo.visibleItemsInfo.find { it.index == currentDraggedIndex }
+            // +1 because the title is index 0 in the LazyColumn
+            val draggedItem = layoutInfo.visibleItemsInfo.find { it.index == currentDraggedIndex + 1 }
             
             if (draggedItem != null) {
                 val itemTop = draggedItem.offset + draggingOffset.y
@@ -400,18 +401,23 @@ fun WorkoutTrackerScreen(
                 val isDragging = activeDraggingItemId == exerciseState.id
                 val isDropping = activeDroppingItemId == exerciseState.id
                 
-                val scale by animateFloatAsState(if (isDragging) 1.05f else 1f)
-                val elevation by animateDpAsState(if (isDragging) 8.dp else 0.dp)
-                val dragYOffset by animateFloatAsState(if (isDragging) draggingOffset.y else if (isDropping) droppingOffset.value.y else 0f)
+                val scale by animateFloatAsState(if (isDragging) 1.05f else 1f, label = "scale")
+                val elevation by animateDpAsState(if (isDragging) 8.dp else 0.dp, label = "elevation")
+                
+                // Only animate when dropping, not when dragging
+                val dragYOffset = if (isDragging) draggingOffset.y else if (isDropping) droppingOffset.value.y else 0f
                 
                 Box(
                     modifier = Modifier
+                        .fillMaxWidth()
+                        .then(if (isDragging) Modifier else Modifier.animateItemPlacement())
+                        .zIndex(if (isDragging) 1f else 0f)
                         .graphicsLayer {
                             translationY = dragYOffset
                             scaleX = scale
                             scaleY = scale
+                            shadowElevation = elevation.toPx()
                         }
-                        .zIndex(if (isDragging) 1f else 0f)
                 ) {
                     ExerciseTrackerItem(
                         exerciseState = exerciseState,
@@ -438,6 +444,9 @@ fun WorkoutTrackerScreen(
                                 workoutService?.startRestTimer(exerciseState.restTime)
                             }
                         },
+                        onToggleInputType = {
+                            exerciseState.inputType = if (exerciseState.inputType == WorkoutSet.InputType.REPS) WorkoutSet.InputType.TIME else WorkoutSet.InputType.REPS
+                        },
                         onRestTimeChange = { newRest ->
                             exerciseState.restTime = newRest
                         },
@@ -457,25 +466,61 @@ fun WorkoutTrackerScreen(
                                         change.consume()
                                         draggingOffset += dragAmount
                                         
-                                        val currentIndex = exercises.indexOfFirst { it.id == activeDraggingItemId }
-                                        val targetIndex = (currentIndex + (draggingOffset.y / 200).roundToInt())
-                                            .coerceIn(0, exercises.lastIndex)
+                                        val currentIndex = exercises.indexOfFirst { it.id == exerciseState.id }
+                                        if (currentIndex == -1) return@detectDragGesturesAfterLongPress
                                         
-                                        if (targetIndex != currentIndex) {
-                                            activeDroppingItemId = exercises[targetIndex].id
-                                            val itemHeight = 200f // Approximate
+                                        // The title is at index 0, so our exercises start at index 1
+                                        val absoluteIndex = currentIndex + 1
+                                        val visibleItems = listState.layoutInfo.visibleItemsInfo
+                                        val draggedItem = visibleItems.find { it.index == absoluteIndex } ?: return@detectDragGesturesAfterLongPress
+                                        
+                                        val spacing = with(density) { 16.dp.toPx() }
+                                        
+                                        if (draggingOffset.y > (draggedItem.size + spacing) * 0.5f && currentIndex < exercises.size - 1) {
+                                            val nextItem = visibleItems.find { it.index == absoluteIndex + 1 }
+                                            val nextSize = nextItem?.size ?: draggedItem.size
+                                            
+                                            // Synchronous move
+                                            activeDroppingItemId = exercises[currentIndex + 1].id
+                                            val droppedId = activeDroppingItemId
+                                            moveExercise(currentIndex, currentIndex + 1)
+                                            draggingOffset = draggingOffset.copy(y = draggingOffset.y - (nextSize + spacing))
+                                            
                                             scope.launch {
-                                                droppingOffset.snapTo(Offset(0f, if (targetIndex > currentIndex) -itemHeight else itemHeight))
-                                                moveExercise(currentIndex, targetIndex)
-                                                draggingOffset = draggingOffset.copy(y = draggingOffset.y + (if (targetIndex > currentIndex) -itemHeight else itemHeight))
-                                                droppingOffset.animateTo(Offset.Zero, spring())
-                                                activeDroppingItemId = null
+                                                droppingOffset.snapTo(Offset(0f, (draggedItem.size + spacing).toFloat()))
+                                                droppingOffset.animateTo(Offset.Zero, spring(stiffness = 500f))
+                                                if (activeDroppingItemId == droppedId) activeDroppingItemId = null
                                             }
+                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        } else if (draggingOffset.y < -(draggedItem.size + spacing) * 0.5f && currentIndex > 0) {
+                                            val prevItem = visibleItems.find { it.index == absoluteIndex - 1 }
+                                            val prevSize = prevItem?.size ?: draggedItem.size
+                                            
+                                            // Synchronous move
+                                            activeDroppingItemId = exercises[currentIndex - 1].id
+                                            val droppedId = activeDroppingItemId
+                                            moveExercise(currentIndex, currentIndex - 1)
+                                            draggingOffset = draggingOffset.copy(y = draggingOffset.y + (prevSize + spacing))
+                                            
+                                            scope.launch {
+                                                droppingOffset.snapTo(Offset(0f, -(draggedItem.size + spacing).toFloat()))
+                                                droppingOffset.animateTo(Offset.Zero, spring(stiffness = 500f))
+                                                if (activeDroppingItemId == droppedId) activeDroppingItemId = null
+                                            }
+                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                         }
                                     },
                                     onDragEnd = {
+                                        val finalOffset = draggingOffset
+                                        val droppedId = exerciseState.id
+                                        activeDroppingItemId = droppedId
                                         activeDraggingItemId = null
                                         draggingOffset = Offset.Zero
+                                        scope.launch {
+                                            droppingOffset.snapTo(finalOffset)
+                                            droppingOffset.animateTo(Offset.Zero, spring(stiffness = 500f))
+                                            if (activeDroppingItemId == droppedId) activeDroppingItemId = null
+                                        }
                                     },
                                     onDragCancel = {
                                         activeDraggingItemId = null
@@ -565,6 +610,7 @@ fun ExerciseTrackerItem(
     onDeleteSet: (Int) -> Unit,
     onRemoveExercise: () -> Unit,
     onToggleSetCompleted: (Int, Boolean) -> Unit,
+    onToggleInputType: () -> Unit,
     onRestTimeChange: (Int) -> Unit,
     onSwapExercise: () -> Unit,
     modifier: Modifier = Modifier
@@ -619,7 +665,15 @@ fun ExerciseTrackerItem(
                 Text("Set", modifier = Modifier.width(40.dp), style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.5f), textAlign = TextAlign.Center)
                 Text("Type", modifier = Modifier.width(60.dp), style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.5f), textAlign = TextAlign.Center)
                 Text(weightUnit.name.lowercase(), modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.5f), textAlign = TextAlign.Center)
-                Text(if (exerciseState.inputType == WorkoutSet.InputType.REPS) "Reps" else "Time", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.5f), textAlign = TextAlign.Center)
+                Text(
+                    text = if (exerciseState.inputType == WorkoutSet.InputType.REPS) "Reps" else "Time",
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { onToggleInputType() },
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    textAlign = TextAlign.Center
+                )
                 Text("RIR", modifier = Modifier.weight(0.8f), style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.5f), textAlign = TextAlign.Center)
                 Spacer(modifier = Modifier.width(48.dp))
             }
