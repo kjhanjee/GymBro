@@ -2,6 +2,28 @@
 
 All notable changes to GymLogger.
 
+### AI Removal & JSON Meal Logger (June 26, 2026)
+
+**AI Removal:**
+- **Complete Decommissioning**: Removed all AI-based features, including AI Trainer Chat, Diet Optimizer, and Workout Optimizer.
+- **Dependency Cleanup**: Removed LiteRT (formerly TensorFlow Lite) and related AI libraries from the project to reduce app size and complexity.
+- **Resource Optimization**: Eliminated background AI resource management logic and model file handling.
+
+**Meal Logger Update:**
+- **JSON-Based Logging**: Replaced the item-by-item manual entry with a flexible JSON input system.
+- **Improved Accuracy**: Users can now directly input exact macro and micro values for every meal.
+- **Template Info Button**: Added an information ("i") button in the meal logger to show the required JSON template for easy copying.
+- **Copy to Clipboard**: Integrated a "Copy to Clipboard" button in the JSON template dialog for faster data entry.
+- **Direct Macro Entry**: Macros and Micros are now logged directly from the JSON input, bypassing the need for AI estimation.
+- **Simplified UI**: Removed the "Food Labels" management system to streamline the meal logging process.
+- **Enhanced Data Portability**: 
+    - Added **per-day download buttons** to daily meal log headers for targeted CSV exports.
+    - Expanded CSV export format to include detailed **Macros and Micros columns** (Calories, Protein, Fibre, Vitamin C, etc.).
+
+**Technical Updates:**
+- **Build Configuration**: Streamlined `build.gradle.kts` by removing AI-related configurations.
+- **CI/CD**: Added a GitHub Action to automatically compile and package the APK on every push.
+
 ### App Experience & Advanced Analytics (June 14, 2026)
 
 **Statistics & Analytics:**

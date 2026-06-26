@@ -44,9 +44,6 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
-    androidResources {
-        noCompress += "litertlm"
-    }
 }
 
 dependencies {
@@ -81,10 +78,6 @@ dependencies {
     implementation("androidx.room:room-runtime:$roomVersion")
     implementation("androidx.room:room-ktx:$roomVersion")
     ksp("androidx.room:room-compiler:$roomVersion")
-
-    // MediaPipe Tasks GenAI for LLM Inference
-    // implementation("com.google.mediapipe:tasks-genai:0.10.33")
-    implementation("com.google.ai.edge.litertlm:litertlm-android:0.10.0")
 
     // Lifecycle
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")

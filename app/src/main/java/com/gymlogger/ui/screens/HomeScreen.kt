@@ -45,10 +45,7 @@ fun HomeScreenPreview() {
             onNavigateToRecentWorkouts = {},
             onNavigateToExercises = {},
             onNavigateToSettings = {},
-            onNavigateToMealLogger = {},
-            onNavigateToDietOptimizer = {},
-            onNavigateToWorkoutOptimizer = {},
-            onNavigateToAiTrainer = {}
+            onNavigateToMealLogger = {}
         )
     }
 }
@@ -62,10 +59,7 @@ fun HomeScreen(
     onNavigateToRecentWorkouts: () -> Unit,
     onNavigateToExercises: () -> Unit,
     onNavigateToSettings: () -> Unit,
-    onNavigateToMealLogger: () -> Unit,
-    onNavigateToDietOptimizer: () -> Unit,
-    onNavigateToWorkoutOptimizer: () -> Unit,
-    onNavigateToAiTrainer: () -> Unit
+    onNavigateToMealLogger: () -> Unit
 ) {
     val routines by com.gymlogger.data.RoutineRepository.getRoutines().collectAsStateWithLifecycle(initialValue = emptyList())
     val workouts by com.gymlogger.data.RoutineRepository.completedWorkouts.collectAsStateWithLifecycle(initialValue = emptyList())
@@ -171,9 +165,6 @@ fun HomeScreen(
                         QuickActionItem("Create Routine", Icons.Default.Add, onNavigateToCreateRoutine),
                         QuickActionItem("Statistics", Icons.Default.BarChart, onNavigateToStatistics),
                         QuickActionItem("Meal Logger", Icons.Default.Restaurant, onNavigateToMealLogger),
-                        QuickActionItem("Diet Optimizer", Icons.Default.AutoAwesome) { onNavigateToDietOptimizer() },
-                        QuickActionItem("AI Trainer", Icons.AutoMirrored.Filled.Chat) { onNavigateToAiTrainer() },
-                        QuickActionItem("Workout Optimizer", Icons.Default.FitnessCenter) { onNavigateToWorkoutOptimizer() },
                         QuickActionItem("Recent Workouts", Icons.Default.History, onNavigateToRecentWorkouts),
                         QuickActionItem("Exercise Library", Icons.Default.Folder, onNavigateToExercises)
                     )

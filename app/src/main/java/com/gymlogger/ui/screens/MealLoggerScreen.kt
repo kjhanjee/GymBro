@@ -30,44 +30,48 @@ import com.gymlogger.util.CsvExporter
 import java.io.OutputStreamWriter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import com.gymlogger.ai.MacroCalculator
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import com.gymlogger.data.MealRepository
-import com.gymlogger.data.FoodLabelRepository
 import com.gymlogger.model.Meal
 import com.gymlogger.model.MealItem
 import com.gymlogger.model.MealMacros
 import com.gymlogger.model.MealType
+import com.gymlogger.model.MealJson
+import com.gymlogger.model.MealItemJson
 import androidx.compose.ui.tooling.preview.Preview
+import android.content.Context
+import android.content.ClipboardManager
+import android.content.ClipData
+import android.widget.Toast
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MealLoggerScreen(onNavigateBack: () -> Unit) {
     val meals by MealRepository.meals.collectAsStateWithLifecycle(initialValue = emptyList())
-    val isAiReady by MacroCalculator.isReady.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     var showAddMealDialog by remember { mutableStateOf(false) }
     var editingMeal by remember { mutableStateOf<Meal?>(null) }
-    var showLabelDialog by remember { mutableStateOf(false) }
     var isSaving by remember { mutableStateOf(false) }
-    var isInitializingAi by remember { mutableStateOf(false) }
+    var mealsToExport by remember { mutableStateOf<List<Meal>?>(null) }
 
     val createDocumentLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("text/csv")
     ) { uri ->
         uri?.let {
             coroutineScope.launch {
-                val latestMeals = MealRepository.meals.value
+                val exportList = mealsToExport ?: MealRepository.meals.value
                 withContext(Dispatchers.IO) {
                     try {
                         context.contentResolver.openOutputStream(it)?.use { outputStream ->
                             OutputStreamWriter(outputStream, java.nio.charset.StandardCharsets.UTF_8).use { writer ->
-                                writer.write(CsvExporter.exportMealsToCsv(latestMeals))
+                                writer.write(CsvExporter.exportMealsToCsv(exportList))
                                 writer.flush()
                             }
                         }
@@ -75,6 +79,7 @@ fun MealLoggerScreen(onNavigateBack: () -> Unit) {
                         android.util.Log.e("MealLoggerScreen", "Failed to save CSV", e)
                     }
                 }
+                mealsToExport = null
             }
         }
     }
@@ -111,46 +116,12 @@ fun MealLoggerScreen(onNavigateBack: () -> Unit) {
 
     val expandedGroups = remember { mutableStateMapOf<String, Boolean>() }
 
-    LaunchedEffect(Unit) {
-        FoodLabelRepository.init(context)
-        if (!isAiReady) {
-            isInitializingAi = true
-            // Small delay to ensure UI transition completes smoothly before heavy engine init
-            delay(500)
-            MacroCalculator.init(context)
-            isInitializingAi = false
-        }
-    }
-
-    DisposableEffect(Unit) {
-        onDispose {
-            coroutineScope.launch {
-                MacroCalculator.release()
-            }
-        }
-    }
-
     Scaffold(
         topBar = {
             GymBroTopAppBar(
                 title = "Meal Logger",
-                subtitle = if (isInitializingAi) "Initializing AI Engine..." else null,
                 onNavigateBack = onNavigateBack,
                 actions = {
-                    IconButton(onClick = {
-                        coroutineScope.launch {
-                            isInitializingAi = true
-                            MacroCalculator.release()
-                            MacroCalculator.init(context)
-                            isInitializingAi = false
-                        }
-                    }) {
-                        Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = "Restart Gemma",
-                            tint = Color.White
-                        )
-                    }
                     IconButton(onClick = { 
                         val fileName = "meal_logs_${SimpleDateFormat("yyyyMMdd_HHmm", Locale.getDefault()).format(Date())}.csv"
                         createDocumentLauncher.launch(fileName)
@@ -158,13 +129,6 @@ fun MealLoggerScreen(onNavigateBack: () -> Unit) {
                         Icon(
                             imageVector = Icons.Default.Download,
                             contentDescription = "Download CSV",
-                            tint = Color.White
-                        )
-                    }
-                    IconButton(onClick = { showLabelDialog = true }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.Label,
-                            contentDescription = "Food Labels",
                             tint = Color.White
                         )
                     }
@@ -191,7 +155,15 @@ fun MealLoggerScreen(onNavigateBack: () -> Unit) {
         ) {
             groupedMeals.forEach { (dateMillis, typesWithMeals) ->
                 item(key = "date-$dateMillis") {
-                    DateHeader(dateMillis)
+                    DateHeader(
+                        dateMillis = dateMillis,
+                        onDownload = {
+                            val dayMeals = typesWithMeals.flatMap { it.second }
+                            mealsToExport = dayMeals
+                            val dateStr = SimpleDateFormat("yyyyMMdd", Locale.getDefault()).format(Date(dateMillis))
+                            createDocumentLauncher.launch("meal_logs_$dateStr.csv")
+                        }
+                    )
                 }
 
                 item(key = "totals-$dateMillis") {
@@ -257,47 +229,6 @@ fun MealLoggerScreen(onNavigateBack: () -> Unit) {
                     }
                 }
             )
-        }
-
-        if (showLabelDialog) {
-            FoodLabelDialog(
-                onDismiss = { showLabelDialog = false }
-            )
-        }
-
-        if (isInitializingAi) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.5f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF1C1C1E)),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        CircularProgressIndicator(
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(48.dp)
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            "Warming up Gemma 2B...",
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            "This may take a few seconds",
-                            color = Color(0xFF8E8E93),
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                }
-            }
         }
 
         if (isSaving) {
@@ -568,17 +499,32 @@ fun DailyTotalsCard(totals: MealMacros) {
 }
 
 @Composable
-fun DateHeader(dateMillis: Long) {
+fun DateHeader(dateMillis: Long, onDownload: () -> Unit) {
     val date = Date(dateMillis)
     val sdf = SimpleDateFormat("EEEE, MMMM d", Locale.getDefault())
     val dateString = sdf.format(date)
     
-    Text(
-        text = dateString,
-        style = MaterialTheme.typography.titleLarge,
-        color = Color.White,
-        modifier = Modifier.padding(vertical = 16.dp)
-    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = dateString,
+            style = MaterialTheme.typography.titleLarge,
+            color = Color.White
+        )
+        IconButton(onClick = onDownload) {
+            Icon(
+                imageVector = Icons.Default.Download,
+                contentDescription = "Download Day CSV",
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+    }
 }
 
 @Composable
@@ -611,157 +557,6 @@ fun MealTypeHeader(type: MealType, isExpanded: Boolean, onToggle: () -> Unit) {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun FoodLabelDialog(onDismiss: () -> Unit) {
-    val labels by FoodLabelRepository.labels.collectAsStateWithLifecycle(initialValue = emptyList())
-    var showAddDialog by remember { mutableStateOf(false) }
-    val context = LocalContext.current
-    val coroutineScope = rememberCoroutineScope()
-
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.8f),
-            color = Color(0xFF1C1C1E),
-            shape = RoundedCornerShape(16.dp)
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        "Food Labels",
-                        style = MaterialTheme.typography.headlineSmall,
-                        color = Color.White
-                    )
-                    IconButton(onClick = onDismiss) {
-                        Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
-                    }
-                }
-                
-                Text(
-                    "Save label information to help AI calculate macros more accurately.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF8E8E93),
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
-
-                LazyColumn(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(labels) { label ->
-                        Card(
-                            colors = CardDefaults.cardColors(containerColor = Color(0xFF2C2C2E))
-                        ) {
-                            Column(modifier = Modifier.padding(12.dp)) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Text(
-                                        label.itemName,
-                                        style = MaterialTheme.typography.titleMedium,
-                                        color = Color.White
-                                    )
-                                    IconButton(
-                                        onClick = {
-                                            coroutineScope.launch {
-                                                FoodLabelRepository.deleteLabel(context, label.itemName)
-                                            }
-                                        },
-                                        modifier = Modifier.size(24.dp)
-                                    ) {
-                                        Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red.copy(alpha = 0.6f))
-                                    }
-                                }
-                                Text(
-                                    label.labelInfo,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = Color(0xFF8E8E93)
-                                )
-                            }
-                        }
-                    }
-                }
-
-                Button(
-                    onClick = { showAddDialog = true },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 16.dp),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Add New Label")
-                }
-            }
-        }
-    }
-
-    if (showAddDialog) {
-        var itemName by remember { mutableStateOf("") }
-        var labelInfo by remember { mutableStateOf("") }
-
-        AlertDialog(
-            onDismissRequest = { showAddDialog = false },
-            title = { Text("Add Food Label", color = Color.White) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TextField(
-                        value = itemName,
-                        onValueChange = { itemName = it },
-                        label = { Text("Food Name (e.g., Whey Protein)") },
-                        colors = TextFieldDefaults.colors(
-                            focusedContainerColor = Color(0xFF2C2C2E),
-                            unfocusedContainerColor = Color(0xFF2C2C2E),
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White
-                        )
-                    )
-                    TextField(
-                        value = labelInfo,
-                        onValueChange = { labelInfo = it },
-                        label = { Text("Nutritional Info (e.g., 24g protein per 30g scoop)") },
-                        modifier = Modifier.height(100.dp),
-                        colors = TextFieldDefaults.colors(
-                            focusedContainerColor = Color(0xFF2C2C2E),
-                            unfocusedContainerColor = Color(0xFF2C2C2E),
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White
-                        )
-                    )
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        if (itemName.isNotBlank() && labelInfo.isNotBlank()) {
-                            coroutineScope.launch {
-                                // FoodLabelRepository.addLabel(context, itemName, labelInfo)
-                                showAddDialog = false
-                            }
-                        }
-                    }
-                ) {
-                    Text("Save")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showAddDialog = false }) {
-                    Text("Cancel", color = Color.White)
-                }
-            },
-            containerColor = Color(0xFF1C1C1E)
-        )
-    }
-}
-
 @Composable
 fun MacroItem(label: String, value: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -777,11 +572,41 @@ fun AddMealDialog(
     onDismiss: () -> Unit,
     onSave: (Meal) -> Unit
 ) {
-    var mealType by remember { mutableStateOf(initialMeal?.type ?: MealType.BREAKFAST) }
+    val context = LocalContext.current
     var mealDate by remember { mutableStateOf(initialMeal?.date ?: System.currentTimeMillis()) }
-    var items by remember { mutableStateOf(initialMeal?.items ?: listOf(MealItem(0, "", ""))) }
+    
+    val initialJson = if (initialMeal != null) {
+        val mealJson = MealJson(
+            type = initialMeal.type.name,
+            items = initialMeal.items.map { item ->
+                MealItemJson(
+                    name = item.name,
+                    calories = initialMeal.macros.calories, // Note: This assumes one item per meal in current UI, but we'll support more in JSON
+                    protein = initialMeal.macros.protein,
+                    carbs = initialMeal.macros.carbs,
+                    fats = initialMeal.macros.fats,
+                    fibre = initialMeal.macros.fibre,
+                    sugar = initialMeal.macros.refinedSugar,
+                    vitaminB = initialMeal.macros.vitaminB,
+                    vitaminD = initialMeal.macros.vitaminD,
+                    omega = initialMeal.macros.omega,
+                    vitaminC = initialMeal.macros.vitaminC,
+                    iron = initialMeal.macros.iron,
+                    potassium = initialMeal.macros.potassium,
+                    magnesium = initialMeal.macros.magnesium,
+                    sodium = initialMeal.macros.sodium
+                )
+            }
+        )
+        Json { prettyPrint = true }.encodeToString(mealJson)
+    } else {
+        ""
+    }
+
+    var jsonInput by remember { mutableStateOf(initialJson) }
     var showDatePicker by remember { mutableStateOf(false) }
-    var expanded by remember { mutableStateOf(false) }
+    var showTemplateInfo by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
@@ -796,12 +621,22 @@ fun AddMealDialog(
                     .padding(16.dp)
                     .fillMaxSize()
             ) {
-                Text(
-                    text = if (initialMeal == null) "Log Meal" else "Edit Meal",
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = Color.White,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = if (initialMeal == null) "Log Meal" else "Edit Meal",
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = Color.White
+                    )
+                    IconButton(onClick = { showTemplateInfo = true }) {
+                        Icon(Icons.Default.Info, contentDescription = "JSON Template", tint = MaterialTheme.colorScheme.primary)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
 
                 // Date Picker Button
                 OutlinedButton(
@@ -817,129 +652,41 @@ fun AddMealDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Meal Type Selector
-                ExposedDropdownMenuBox(
-                    expanded = expanded,
-                    onExpandedChange = { expanded = !expanded },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    TextField(
-                        value = mealType.name.lowercase().replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }.replace("_", "-"),
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Meal Type", color = Color.White) },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                        colors = ExposedDropdownMenuDefaults.textFieldColors(
-                            focusedContainerColor = Color(0xFF2C2C2E),
-                            unfocusedContainerColor = Color(0xFF2C2C2E),
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White,
-                            focusedLabelColor = Color.LightGray,
-                            unfocusedLabelColor = Color.LightGray,
-                            cursorColor = Color.White,
-                            focusedIndicatorColor = Color.Transparent,
-                            unfocusedIndicatorColor = Color.Transparent
-                        ),
-                        modifier = Modifier
-                            .menuAnchor()
-                            .fillMaxWidth(),
-                        shape = RoundedCornerShape(8.dp)
-                    )
-
-                    ExposedDropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = { expanded = false },
-                        modifier = Modifier.background(Color(0xFF2C2C2E))
-                    ) {
-                        MealType.values().forEach { type ->
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        text = type.name.lowercase().replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }.replace("_", "-"),
-                                        color = Color.White
-                                    )
-                                },
-                                onClick = {
-                                    mealType = type
-                                    expanded = false
-                                },
-                                contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
-                            )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Items List
+                // JSON Input
                 Text(
-                    text = "Items",
+                    text = "Meal Data (JSON)",
                     style = MaterialTheme.typography.titleMedium,
                     color = Color.White,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
 
-                LazyColumn(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(items.size) { index ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            TextField(
-                                value = items[index].name,
-                                onValueChange = { newName ->
-                                    items = items.toMutableList().also {
-                                        it[index] = it[index].copy(name = newName)
-                                    }
-                                },
-                                placeholder = { Text("Food (e.g. Eggs)") },
-                                modifier = Modifier.weight(2f),
-                                colors = TextFieldDefaults.colors(
-                                    focusedContainerColor = Color(0xFF2C2C2E),
-                                    unfocusedContainerColor = Color(0xFF2C2C2E),
-                                    focusedTextColor = Color.White,
-                                    unfocusedTextColor = Color.White
-                                )
-                            )
-                            TextField(
-                                value = items[index].weight,
-                                onValueChange = { newWeight ->
-                                    items = items.toMutableList().also {
-                                        it[index] = it[index].copy(weight = newWeight)
-                                    }
-                                },
-                                placeholder = { Text("Qty (e.g. 2)") },
-                                modifier = Modifier.weight(1f),
-                                colors = TextFieldDefaults.colors(
-                                    focusedContainerColor = Color(0xFF2C2C2E),
-                                    unfocusedContainerColor = Color(0xFF2C2C2E),
-                                    focusedTextColor = Color.White,
-                                    unfocusedTextColor = Color.White
-                                )
-                            )
-                            IconButton(onClick = {
-                                if (items.size > 1) {
-                                    items = items.toMutableList().also { it.removeAt(index) }
-                                }
-                            }) {
-                                Icon(Icons.Default.RemoveCircleOutline, contentDescription = "Remove", tint = Color.Red.copy(alpha = 0.6f))
-                            }
-                        }
-                    }
-                    item {
-                        TextButton(
-                            onClick = { items = items + MealItem(0, "", "") },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(Icons.Default.Add, contentDescription = null)
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Add Item")
-                        }
-                    }
+                TextField(
+                    value = jsonInput,
+                    onValueChange = { 
+                        jsonInput = it
+                        errorMessage = null
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    placeholder = { Text("Paste meal JSON here...") },
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color(0xFF2C2C2E),
+                        unfocusedContainerColor = Color(0xFF2C2C2E),
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        cursorColor = MaterialTheme.colorScheme.primary
+                    ),
+                    textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
+                )
+
+                if (errorMessage != null) {
+                    Text(
+                        text = errorMessage!!,
+                        color = Color.Red,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -957,17 +704,40 @@ fun AddMealDialog(
                     }
                     Button(
                         onClick = {
-                            val validItems = items.filter { it.name.isNotBlank() }
-                            if (validItems.isNotEmpty()) {
-                                onSave(
-                                    Meal(
-                                        id = initialMeal?.id ?: 0,
-                                        date = mealDate,
-                                        type = mealType,
-                                        items = validItems,
-                                        macros = initialMeal?.macros ?: MealMacros()
+                            try {
+                                val json = Json { ignoreUnknownKeys = true }
+                                val mealJson = json.decodeFromString<MealJson>(jsonInput)
+                                val mealType = try {
+                                    MealType.valueOf(mealJson.type.uppercase())
+                                } catch (e: Exception) {
+                                    MealType.SNACK
+                                }
+
+                                val meal = Meal(
+                                    id = initialMeal?.id ?: 0,
+                                    date = mealDate,
+                                    type = mealType,
+                                    items = mealJson.items.mapIndexed { index, item -> MealItem(index.toLong(), item.name, "") },
+                                    macros = MealMacros(
+                                        calories = mealJson.items.sumOf { it.calories.toDouble() }.toFloat(),
+                                        protein = mealJson.items.sumOf { it.protein.toDouble() }.toFloat(),
+                                        carbs = mealJson.items.sumOf { it.carbs.toDouble() }.toFloat(),
+                                        fats = mealJson.items.sumOf { it.fats.toDouble() }.toFloat(),
+                                        fibre = mealJson.items.sumOf { it.fibre.toDouble() }.toFloat(),
+                                        refinedSugar = mealJson.items.sumOf { it.sugar.toDouble() }.toFloat(),
+                                        vitaminB = mealJson.items.sumOf { it.vitaminB.toDouble() }.toFloat(),
+                                        vitaminD = mealJson.items.sumOf { it.vitaminD.toDouble() }.toFloat(),
+                                        omega = mealJson.items.sumOf { it.omega.toDouble() }.toFloat(),
+                                        vitaminC = mealJson.items.sumOf { it.vitaminC.toDouble() }.toFloat(),
+                                        iron = mealJson.items.sumOf { it.iron.toDouble() }.toFloat(),
+                                        potassium = mealJson.items.sumOf { it.potassium.toDouble() }.toFloat(),
+                                        magnesium = mealJson.items.sumOf { it.magnesium.toDouble() }.toFloat(),
+                                        sodium = mealJson.items.sumOf { it.sodium.toDouble() }.toFloat()
                                     )
                                 )
+                                onSave(meal)
+                            } catch (e: Exception) {
+                                errorMessage = "Invalid JSON format: ${e.localizedMessage}"
                             }
                         },
                         modifier = Modifier.weight(1f),
@@ -978,6 +748,99 @@ fun AddMealDialog(
                 }
             }
         }
+    }
+
+    if (showTemplateInfo) {
+        val template = """
+            {
+              "type": "LUNCH",
+              "items": [
+                {
+                  "name": "Chicken Breast",
+                  "calories": 165,
+                  "protein": 31,
+                  "carbs": 0,
+                  "fats": 3.6,
+                  "fibre": 0,
+                  "sugar": 0,
+                  "vitaminB": 0.4,
+                  "vitaminD": 0,
+                  "omega": 0,
+                  "vitaminC": 0,
+                  "iron": 1.0,
+                  "potassium": 256,
+                  "magnesium": 29,
+                  "sodium": 74
+                },
+                {
+                  "name": "White Rice",
+                  "calories": 205,
+                  "protein": 4.3,
+                  "carbs": 45,
+                  "fats": 0.4,
+                  "fibre": 0.6,
+                  "sugar": 0,
+                  "vitaminB": 0.1,
+                  "vitaminD": 0,
+                  "omega": 0,
+                  "vitaminC": 0,
+                  "iron": 0.2,
+                  "potassium": 55,
+                  "magnesium": 19,
+                  "sodium": 1
+                }
+              ]
+            }
+        """.trimIndent()
+
+        AlertDialog(
+            onDismissRequest = { showTemplateInfo = false },
+            title = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Meal JSON Template")
+                    IconButton(onClick = {
+                        val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        val clip = ClipData.newPlainText("Meal JSON Template", template)
+                        clipboardManager.setPrimaryClip(clip)
+                        Toast.makeText(context, "Template copied to clipboard", Toast.LENGTH_SHORT).show()
+                    }) {
+                        Icon(Icons.Default.ContentCopy, contentDescription = "Copy to clipboard", tint = MaterialTheme.colorScheme.primary)
+                    }
+                }
+            },
+            text = {
+                Column {
+                    Text("Copy this template and replace the values:", style = MaterialTheme.typography.bodySmall)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Surface(
+                        color = Color(0xFF2C2C2E),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = template,
+                            modifier = Modifier.padding(8.dp),
+                            style = MaterialTheme.typography.bodySmall.copy(fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace),
+                            color = Color.LightGray
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Valid types: BREAKFAST, LUNCH, DINNER, SNACK, PRE_WORKOUT", style = MaterialTheme.typography.bodySmall)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showTemplateInfo = false }) {
+                    Text("Got it")
+                }
+            },
+            containerColor = Color(0xFF1C1C1E),
+            titleContentColor = Color.White,
+            textContentColor = Color.White
+        )
     }
 
     if (showDatePicker) {

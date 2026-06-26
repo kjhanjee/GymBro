@@ -50,28 +50,7 @@ fun AppNavigation(
                     onNavigateToRecentWorkouts = { navController.navigate("recentWorkouts") },
                     onNavigateToExercises = { navController.navigate("exercises") },
                     onNavigateToSettings = { navController.navigate("settings") },
-                    onNavigateToMealLogger = { navController.navigate("mealLogger") },
-                    onNavigateToDietOptimizer = { navController.navigate("dietOptimizer") },
-                    onNavigateToWorkoutOptimizer = { navController.navigate("workoutOptimizer") },
-                    onNavigateToAiTrainer = { navController.navigate("aiTrainer") }
-                )
-            }
-
-            composable("aiTrainer") {
-                AiTrainerChatScreen(
-                    onNavigateBack = { navController.popBackStack() }
-                )
-            }
-
-            composable("workoutOptimizer") {
-                WorkoutOptimizerScreen(
-                    onNavigateBack = { navController.popBackStack() }
-                )
-            }
-
-            composable("dietOptimizer") {
-                DietOptimizerScreen(
-                    onNavigateBack = { navController.popBackStack() }
+                    onNavigateToMealLogger = { navController.navigate("mealLogger") }
                 )
             }
 

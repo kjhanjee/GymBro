@@ -18,11 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.platform.LocalWindowInfo
-import com.gymlogger.ai.MacroCalculator
 import com.gymlogger.data.ExerciseRepository
 import com.gymlogger.data.MealRepository
 import com.gymlogger.data.RoutineRepository
@@ -33,27 +29,9 @@ import com.gymlogger.ui.navigation.AppNavigation
 import com.gymlogger.ui.theme.GymBroTheme
 import android.content.Intent
 import kotlinx.coroutines.launch
-
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.ProcessLifecycleOwner
-import android.content.ComponentCallbacks2
-
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
-class MainActivity : ComponentActivity(), ComponentCallbacks2 {
-
-    override fun onTrimMemory(level: Int) {
-        super.onTrimMemory(level)
-        if (level >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL) {
-            Log.w("MainActivity", "Memory pressure high (level $level) - releasing AI engine")
-            scope.launch {
-                MacroCalculator.release()
-            }
-        }
-    }
-
-    private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -62,13 +40,11 @@ class MainActivity : ComponentActivity(), ComponentCallbacks2 {
         setContent {
             val context = LocalContext.current
             val themeHue by SettingsRepository.activeThemeHue.collectAsStateWithLifecycle(0f)
-            val downloadProgress by MacroCalculator.downloadProgress.collectAsStateWithLifecycle()
-            val isAiReady by MacroCalculator.isReady.collectAsStateWithLifecycle()
             
             var isInitialized by rememberSaveable { mutableStateOf(false) }
 
             LaunchedEffect(Unit) {
-                Log.d("MainActivity", "LaunchedEffect(Unit) triggered, isInitialized: $isInitialized, isAiReady: $isAiReady")
+                Log.d("MainActivity", "LaunchedEffect(Unit) triggered, isInitialized: $isInitialized")
                 SettingsRepository.init(context)
                 ExerciseRepository.init(context)
                 RoutineRepository.init(context)
@@ -117,8 +93,8 @@ class MainActivity : ComponentActivity(), ComponentCallbacks2 {
                             }
                         }
 
-                        // Download/Initialization Overlay
-                        if (downloadProgress != null || !isInitialized) {
+                        // Initialization Overlay
+                        if (!isInitialized) {
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
@@ -129,44 +105,19 @@ class MainActivity : ComponentActivity(), ComponentCallbacks2 {
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                     modifier = Modifier.padding(32.dp)
                                 ) {
-                                    if (downloadProgress != null) {
-                                        CircularProgressIndicator(
-                                            progress = downloadProgress ?: 0f,
-                                            modifier = Modifier.size(64.dp),
-                                            strokeWidth = 6.dp,
-                                            color = MaterialTheme.colorScheme.primary
-                                        )
-                                    } else {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(64.dp),
-                                            strokeWidth = 6.dp,
-                                            color = MaterialTheme.colorScheme.primary
-                                        )
-                                    }
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(64.dp),
+                                        strokeWidth = 6.dp,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
 
                                     Spacer(modifier = Modifier.height(24.dp))
                                     Text(
-                                        text = if (downloadProgress != null) "Downloading AI Model..." else "Initializing...",
+                                        text = "Initializing...",
                                         color = Color.White,
                                         fontSize = 18.sp,
                                         fontWeight = FontWeight.Bold
                                     )
-                                    
-                                    val currentProgress = downloadProgress
-                                    if (currentProgress != null) {
-                                        Text(
-                                            text = "${(currentProgress * 100).toInt()}%",
-                                            color = Color.White.copy(alpha = 0.7f),
-                                            fontSize = 14.sp
-                                        )
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                        Text(
-                                            text = "Gemma 2B is ~1.5GB. Please stay on this screen.",
-                                            color = Color.White.copy(alpha = 0.5f),
-                                            fontSize = 12.sp,
-                                            textAlign = TextAlign.Center
-                                        )
-                                    }
                                 }
                             }
                         }

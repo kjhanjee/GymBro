@@ -4,9 +4,6 @@ import android.content.Context
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.gymlogger.model.Meal
-import com.gymlogger.model.MealMacros
-import com.gymlogger.ai.MacroCalculator
-import com.gymlogger.data.FoodLabelRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -44,65 +41,15 @@ object MealRepository {
     }
 
     suspend fun addMeal(context: Context, meal: Meal) {
-        val calculatedMacros = calculateMacrosForMeal(meal)
         val id = (_meals.value.maxOfOrNull { it.id } ?: 0L) + 1L
-        val newMeal = meal.copy(id = id, macros = calculatedMacros)
+        val newMeal = meal.copy(id = id)
         _meals.value = _meals.value + newMeal
         saveMeals(context)
     }
 
     suspend fun updateMeal(context: Context, meal: Meal) {
-        val calculatedMacros = calculateMacrosForMeal(meal)
-        val updatedMeal = meal.copy(macros = calculatedMacros)
-        _meals.value = _meals.value.map { if (it.id == meal.id) updatedMeal else it }
+        _meals.value = _meals.value.map { if (it.id == meal.id) meal else it }
         saveMeals(context)
-    }
-
-    private suspend fun calculateMacrosForMeal(meal: Meal): MealMacros {
-        // Fetch all saved labels
-        val savedLabels = FoodLabelRepository.labels.value
-        
-        // Create a separate block for labels information
-        val labelsInfo = if (savedLabels.isNotEmpty()) {
-            savedLabels.joinToString("\n") { "- ${it.itemName}: ${it.labelInfo}" }
-        } else {
-            "No specific label information provided."
-        }
-
-        // Create a string representation of all items for the AI
-        val mealDescription = meal.items.joinToString(", ") { "${it.weight} ${it.name}" }
-        
-        android.util.Log.d("MealRepository", "Requesting macros for: $mealDescription with labels: $labelsInfo")
-        val jsonResponse = MacroCalculator.calculateMacros(mealDescription, labelsInfo)
-        android.util.Log.d("MealRepository", "AI Response: $jsonResponse")
-        
-        return try {
-            if (jsonResponse != null) {
-                // Strip potential markdown format and common noise
-                val cleanJson = jsonResponse.trim()
-                    .removeSurrounding("```json", "```")
-                    .removeSurrounding("```")
-                    .trim()
-                
-                android.util.Log.d("MealRepository", "Cleaned JSON: $cleanJson")
-                
-                // Fallback: If Gemma adds extra conversational text, try to extract the JSON object
-                val jsonObject = if (cleanJson.contains("{") && cleanJson.contains("}")) {
-                    cleanJson.substring(cleanJson.indexOf("{"), cleanJson.lastIndexOf("}") + 1)
-                } else {
-                    cleanJson
-                }
-                
-                android.util.Log.d("MealRepository", "Final JSON for parsing: $jsonObject")
-                json.decodeFromString<MealMacros>(jsonObject)
-            } else {
-                android.util.Log.w("MealRepository", "AI returned null response")
-                MealMacros()
-            }
-        } catch (e: Exception) {
-            android.util.Log.e("MealRepository", "Failed to parse macros JSON", e)
-            MealMacros()
-        }
     }
 
     suspend fun deleteMeal(context: Context, id: Long) {
